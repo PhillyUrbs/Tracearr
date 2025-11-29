@@ -16,7 +16,7 @@ import {
   type ActiveSession,
 } from '@tracearr/shared';
 import { db } from '../db/client.js';
-import { sessions, users, violations, servers } from '../db/schema.js';
+import { sessions, users, violations } from '../db/schema.js';
 import { getTimescaleStatus } from '../db/timescale.js';
 
 // Cache whether aggregates are available (checked once at startup)

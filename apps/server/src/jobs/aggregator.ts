@@ -2,7 +2,7 @@
  * Background job for refreshing dashboard statistics
  */
 
-import { POLLING_INTERVALS, REDIS_KEYS, CACHE_TTL } from '@tracearr/shared';
+import { POLLING_INTERVALS } from '@tracearr/shared';
 
 let aggregatorInterval: NodeJS.Timeout | null = null;
 
@@ -53,10 +53,10 @@ export function startAggregator(config: Partial<AggregatorConfig> = {}): void {
   console.log(`Starting stats aggregator with ${mergedConfig.intervalMs}ms interval`);
 
   // Run immediately on start
-  refreshStats();
+  void refreshStats();
 
   // Then run on interval
-  aggregatorInterval = setInterval(refreshStats, mergedConfig.intervalMs);
+  aggregatorInterval = setInterval(() => void refreshStats(), mergedConfig.intervalMs);
 }
 
 /**

@@ -199,7 +199,7 @@ async function findOrCreateUser(
         .update(users)
         .set({
           username,
-          thumbUrl: thumbUrl || existing.thumbUrl, // Don't overwrite with empty
+          thumbUrl: thumbUrl ?? existing.thumbUrl, // Don't overwrite with empty
           updatedAt: new Date(),
         })
         .where(eq(users.id, existing.id));
@@ -342,8 +342,8 @@ async function createViolation(
       ruleId: created.ruleId,
       userId: created.userId,
       sessionId: created.sessionId,
-      severity: created.severity as 'low' | 'warning' | 'high',
-      data: created.data as Record<string, unknown>,
+      severity: created.severity,
+      data: created.data,
       acknowledgedAt: created.acknowledgedAt,
       createdAt: created.createdAt,
       user: {
@@ -354,7 +354,7 @@ async function createViolation(
       rule: {
         id: rule.id,
         name: rule.name,
-        type: rule.type as ViolationWithDetails['rule']['type'],
+        type: rule.type,
       },
     };
 
@@ -770,10 +770,10 @@ export function startPoller(config: Partial<PollerConfig> = {}): void {
   console.log(`Starting session poller with ${mergedConfig.intervalMs}ms interval`);
 
   // Run immediately on start
-  pollServers();
+  void pollServers();
 
   // Then run on interval
-  pollingInterval = setInterval(pollServers, mergedConfig.intervalMs);
+  pollingInterval = setInterval(() => void pollServers(), mergedConfig.intervalMs);
 }
 
 /**

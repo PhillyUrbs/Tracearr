@@ -3,7 +3,7 @@
  */
 
 import type { FastifyPluginAsync } from 'fastify';
-import { eq, and, desc, sql, isNotNull } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 import {
   updateUserSchema,
   userIdParamSchema,

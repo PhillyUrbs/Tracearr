@@ -242,11 +242,10 @@ async function start() {
     // Handle graceful shutdown
     const signals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
     for (const signal of signals) {
-      process.on(signal, async () => {
+      process.on(signal, () => {
         app.log.info(`Received ${signal}, shutting down gracefully...`);
         stopPoller();
-        await app.close();
-        process.exit(0);
+        void app.close().then(() => process.exit(0));
       });
     }
 
@@ -262,7 +261,7 @@ async function start() {
     const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
     const wsSubscriber = new Redis(redisUrl);
 
-    wsSubscriber.subscribe(REDIS_KEYS.PUBSUB_EVENTS, (err) => {
+    void wsSubscriber.subscribe(REDIS_KEYS.PUBSUB_EVENTS, (err) => {
       if (err) {
         app.log.error({ err }, 'Failed to subscribe to pub/sub channel');
       } else {
@@ -308,8 +307,8 @@ async function start() {
     });
 
     // Handle graceful shutdown for WebSocket subscriber
-    const cleanupWsSubscriber = async () => {
-      await wsSubscriber.quit();
+    const cleanupWsSubscriber = () => {
+      void wsSubscriber.quit();
     };
     process.on('SIGINT', cleanupWsSubscriber);
     process.on('SIGTERM', cleanupWsSubscriber);
@@ -327,4 +326,4 @@ async function start() {
   }
 }
 
-start();
+void start();

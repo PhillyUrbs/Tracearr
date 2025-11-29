@@ -2,8 +2,9 @@
  * Socket.io WebSocket server setup
  */
 
-import { Server as HttpServer } from 'http';
-import { Server, Socket } from 'socket.io';
+import type { Server as HttpServer } from 'http';
+import { Server } from 'socket.io';
+import type { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import type { ServerToClientEvents, ClientToServerEvents, AuthUser } from '@tracearr/shared';
 import { WS_EVENTS } from '@tracearr/shared';
@@ -41,12 +42,13 @@ export function initializeWebSocket(httpServer: HttpServer): TypedServer {
   });
 
   // Authentication middleware
-  io.use(async (socket: TypedSocket, next) => {
+  io.use((socket: TypedSocket, next) => {
     try {
       const token = socket.handshake.auth.token as string | undefined;
 
       if (!token) {
-        return next(new Error('Authentication required'));
+        next(new Error('Authentication required'));
+        return;
       }
 
       // Verify JWT and attach user to socket
@@ -66,27 +68,27 @@ export function initializeWebSocket(httpServer: HttpServer): TypedServer {
 
     // Join user-specific room for targeted messages
     if (user?.userId) {
-      socket.join(`user:${user.userId}`);
+      void socket.join(`user:${user.userId}`);
     }
 
     // Join server rooms for server-specific messages
     if (user?.serverIds) {
       for (const serverId of user.serverIds) {
-        socket.join(`server:${serverId}`);
+        void socket.join(`server:${serverId}`);
       }
     }
 
     // Auto-subscribe to sessions on connect
-    socket.join('sessions');
+    void socket.join('sessions');
 
     // Handle session subscriptions
     socket.on(WS_EVENTS.SUBSCRIBE_SESSIONS as 'subscribe:sessions', () => {
-      socket.join('sessions');
+      void socket.join('sessions');
       console.log(`[WebSocket] ${socket.id} subscribed to sessions`);
     });
 
     socket.on(WS_EVENTS.UNSUBSCRIBE_SESSIONS as 'unsubscribe:sessions', () => {
-      socket.leave('sessions');
+      void socket.leave('sessions');
       console.log(`[WebSocket] ${socket.id} unsubscribed from sessions`);
     });
 

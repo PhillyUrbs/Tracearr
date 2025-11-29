@@ -6,7 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { createServerSchema, serverIdParamSchema } from '@tracearr/shared';
 import { db } from '../db/client.js';
-import { servers, users } from '../db/schema.js';
+import { servers } from '../db/schema.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { PlexService } from '../services/plex.js';
 import { JellyfinService } from '../services/jellyfin.js';
@@ -291,7 +291,7 @@ export const serverRoutes: FastifyPluginAsync = async (app) => {
           return reply.notFound('Image not found');
         }
 
-        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const contentType = response.headers.get('content-type') ?? 'image/jpeg';
         const buffer = await response.arrayBuffer();
 
         reply.header('Content-Type', contentType);

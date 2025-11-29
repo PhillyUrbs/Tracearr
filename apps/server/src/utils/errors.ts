@@ -242,7 +242,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
         'Validation failed',
         error.validation.map((v) => ({
           field: v.instancePath || 'unknown',
-          message: v.message || 'Invalid value',
+          message: v.message ?? 'Invalid value',
         }))
       );
       return reply.status(400).send(validationError.toJSON());

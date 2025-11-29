@@ -5,8 +5,8 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { servers, users } from '../db/schema.js';
-import { PlexService, type PlexTvUser, type PlexLibrary } from './plex.js';
-import { JellyfinService, type JellyfinUser } from './jellyfin.js';
+import { PlexService } from './plex.js';
+import { JellyfinService } from './jellyfin.js';
 import { decrypt } from '../utils/crypto.js';
 
 export interface SyncResult {
@@ -35,7 +35,7 @@ async function syncPlexUsers(
 
   try {
     // Get server machine identifier for shared_servers API
-    const response = await fetch(`${serverUrl}`, {
+    const response = await fetch(serverUrl, {
       headers: {
         'X-Plex-Token': token,
         Accept: 'application/json',

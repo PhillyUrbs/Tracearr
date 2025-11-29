@@ -13,7 +13,6 @@ import {
   real,
   jsonb,
   index,
-  primaryKey,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -67,10 +66,10 @@ export const users = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({
-    serverIdx: index('users_server_id_idx').on(table.serverId),
-    externalIdx: index('users_external_id_idx').on(table.serverId, table.externalId),
-  })
+  (table) => [
+    index('users_server_id_idx').on(table.serverId),
+    index('users_external_id_idx').on(table.serverId, table.externalId),
+  ]
 );
 
 // Session history (will be converted to hypertable)
@@ -117,13 +116,13 @@ export const sessions = pgTable(
     isTranscode: boolean('is_transcode').notNull().default(false),
     bitrate: integer('bitrate'),
   },
-  (table) => ({
-    userTimeIdx: index('sessions_user_time_idx').on(table.userId, table.startedAt),
-    serverTimeIdx: index('sessions_server_time_idx').on(table.serverId, table.startedAt),
-    stateIdx: index('sessions_state_idx').on(table.state),
-    externalSessionIdx: index('sessions_external_session_idx').on(table.serverId, table.externalSessionId),
-    deviceIdx: index('sessions_device_idx').on(table.userId, table.deviceId),
-  })
+  (table) => [
+    index('sessions_user_time_idx').on(table.userId, table.startedAt),
+    index('sessions_server_time_idx').on(table.serverId, table.startedAt),
+    index('sessions_state_idx').on(table.state),
+    index('sessions_external_session_idx').on(table.serverId, table.externalSessionId),
+    index('sessions_device_idx').on(table.userId, table.deviceId),
+  ]
 );
 
 // Sharing detection rules
@@ -139,10 +138,10 @@ export const rules = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => ({
-    activeIdx: index('rules_active_idx').on(table.isActive),
-    userIdx: index('rules_user_id_idx').on(table.userId),
-  })
+  (table) => [
+    index('rules_active_idx').on(table.isActive),
+    index('rules_user_id_idx').on(table.userId),
+  ]
 );
 
 // Rule violations
@@ -166,11 +165,11 @@ export const violations = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
   },
-  (table) => ({
-    userIdx: index('violations_user_id_idx').on(table.userId),
-    ruleIdx: index('violations_rule_id_idx').on(table.ruleId),
-    createdIdx: index('violations_created_at_idx').on(table.createdAt),
-  })
+  (table) => [
+    index('violations_user_id_idx').on(table.userId),
+    index('violations_rule_id_idx').on(table.ruleId),
+    index('violations_created_at_idx').on(table.createdAt),
+  ]
 );
 
 // Application settings (single row)

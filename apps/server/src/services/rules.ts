@@ -5,7 +5,6 @@
 import type {
   Rule,
   Session,
-  Violation,
   ViolationSeverity,
   ImpossibleTravelParams,
   SimultaneousLocationsParams,
