@@ -10,6 +10,7 @@ import { Users } from '@/pages/Users';
 import { UserDetail } from '@/pages/UserDetail';
 import { Rules } from '@/pages/Rules';
 import { Violations } from '@/pages/Violations';
+import { Map } from '@/pages/Map';
 import { Settings } from '@/pages/Settings';
 import { NotFound } from '@/pages/NotFound';
 
@@ -34,6 +35,7 @@ export function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetail />} />
+          <Route path="map" element={<Map />} />
           <Route path="rules" element={<Rules />} />
           <Route path="violations" element={<Violations />} />
           <Route path="settings/*" element={<Settings />} />
