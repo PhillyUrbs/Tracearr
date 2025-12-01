@@ -242,6 +242,10 @@ export const settings = pgTable('settings', {
   // Tautulli integration
   tautulliUrl: text('tautulli_url'),
   tautulliApiKey: text('tautulli_api_key'), // Encrypted
+  // Network/access settings for self-hosted deployments
+  externalUrl: text('external_url'), // Public URL for mobile/external access (e.g., https://tracearr.example.com)
+  basePath: varchar('base_path', { length: 100 }).notNull().default(''), // For subfolder proxies (e.g., /tracearr)
+  trustProxy: boolean('trust_proxy').notNull().default(false), // Trust X-Forwarded-* headers from reverse proxy
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
