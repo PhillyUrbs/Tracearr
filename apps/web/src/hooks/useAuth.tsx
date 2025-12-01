@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { AuthUser } from '@tracearr/shared';
-import { api, tokenStorage } from '@/lib/api';
+import { api, tokenStorage, AUTH_STATE_CHANGE_EVENT } from '@/lib/api';
 
 interface UserProfile extends AuthUser {
   email: string | null;
@@ -57,14 +57,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           hasPlexLinked: user.hasPlexLinked,
         } as UserProfile;
       } catch {
-        // Token invalid, clear it
-        tokenStorage.clearTokens();
+        // Token invalid, clear it (silent - the null return triggers proper logout flow)
+        tokenStorage.clearTokens(true);
         return null;
       }
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+
+  // Listen for auth state changes (e.g., token cleared due to failed refresh)
+  useEffect(() => {
+    const handleAuthChange = () => {
+      // Immediately clear auth data and redirect to login
+      queryClient.setQueryData(['auth', 'me'], null);
+      queryClient.clear();
+      window.location.href = '/login';
+    };
+
+    window.addEventListener(AUTH_STATE_CHANGE_EVENT, handleAuthChange);
+    return () => window.removeEventListener(AUTH_STATE_CHANGE_EVENT, handleAuthChange);
+  }, [queryClient]);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -73,7 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         // Ignore API errors - we're logging out anyway
       } finally {
-        tokenStorage.clearTokens();
+        // Use silent mode to avoid double-redirect (we handle redirect in onSettled)
+        tokenStorage.clearTokens(true);
       }
     },
     onSettled: () => {

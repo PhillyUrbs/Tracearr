@@ -50,6 +50,9 @@ export interface PlexCheckPinResponse {
 const ACCESS_TOKEN_KEY = 'tracearr_access_token';
 const REFRESH_TOKEN_KEY = 'tracearr_refresh_token';
 
+// Event for auth state changes (logout, token cleared, etc.)
+export const AUTH_STATE_CHANGE_EVENT = 'tracearr:auth-state-change';
+
 // Token management utilities
 export const tokenStorage = {
   getAccessToken: (): string | null => localStorage.getItem(ACCESS_TOKEN_KEY),
@@ -58,22 +61,86 @@ export const tokenStorage = {
     localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   },
-  clearTokens: () => {
+  /**
+   * Clear tokens from storage
+   * @param silent - If true, don't dispatch auth change event (used for intentional logout)
+   */
+  clearTokens: (silent = false) => {
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    // Dispatch event so auth context can react immediately (unless silent)
+    if (!silent) {
+      window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGE_EVENT, { detail: { type: 'logout' } }));
+    }
   },
 };
 
 class ApiClient {
   private baseUrl: string;
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
   constructor(baseUrl: string = API_BASE_PATH) {
     this.baseUrl = baseUrl;
   }
 
+  /**
+   * Attempt to refresh the access token using the refresh token
+   * Returns true if refresh succeeded, false otherwise
+   */
+  private async refreshAccessToken(): Promise<boolean> {
+    const refreshToken = tokenStorage.getRefreshToken();
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+
+      if (!response.ok) {
+        tokenStorage.clearTokens();
+        return false;
+      }
+
+      const data = await response.json();
+      if (data.accessToken && data.refreshToken) {
+        tokenStorage.setTokens(data.accessToken, data.refreshToken);
+        return true;
+      }
+
+      return false;
+    } catch {
+      tokenStorage.clearTokens();
+      return false;
+    }
+  }
+
+  /**
+   * Handle token refresh with deduplication
+   * Multiple concurrent 401s will share the same refresh attempt
+   */
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (this.isRefreshing) {
+      return this.refreshPromise!;
+    }
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.refreshAccessToken().finally(() => {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    });
+
+    return this.refreshPromise;
+  }
+
   private async request<T>(
     path: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    isRetry = false
   ): Promise<T> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -91,6 +158,17 @@ class ApiClient {
       credentials: 'include',
       headers,
     });
+
+    // Handle 401 with automatic token refresh (skip for auth endpoints to avoid loops)
+    if (response.status === 401 && !isRetry && !path.startsWith('/auth/')) {
+      const refreshed = await this.handleTokenRefresh();
+      if (refreshed) {
+        // Retry the original request with new token
+        return this.request<T>(path, options, true);
+      }
+      // Refresh failed - clear tokens and throw
+      tokenStorage.clearTokens();
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));

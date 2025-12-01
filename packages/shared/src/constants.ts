@@ -84,7 +84,7 @@ export const API_BASE_PATH = `/api/${API_VERSION}`;
 
 // JWT configuration
 export const JWT_CONFIG = {
-  ACCESS_TOKEN_EXPIRY: '1h',
+  ACCESS_TOKEN_EXPIRY: '48h',
   REFRESH_TOKEN_EXPIRY: '30d',
   ALGORITHM: 'HS256',
 } as const;
