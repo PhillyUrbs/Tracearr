@@ -26,6 +26,10 @@ export interface CacheService {
   addUserSession(userId: string, sessionId: string): Promise<void>;
   removeUserSession(userId: string, sessionId: string): Promise<void>;
 
+  // Server health tracking
+  getServerHealth(serverId: string): Promise<boolean | null>;
+  setServerHealth(serverId: string, isHealthy: boolean): Promise<void>;
+
   // Generic cache operations
   invalidateCache(key: string): Promise<void>;
   invalidatePattern(pattern: string): Promise<void>;
@@ -114,6 +118,21 @@ export function createCacheService(redis: Redis): CacheService {
 
     async removeUserSession(userId: string, sessionId: string): Promise<void> {
       await redis.srem(REDIS_KEYS.USER_SESSIONS(userId), sessionId);
+    },
+
+    // Server health tracking
+    async getServerHealth(serverId: string): Promise<boolean | null> {
+      const data = await redis.get(REDIS_KEYS.SERVER_HEALTH(serverId));
+      if (data === null) return null;
+      return data === 'true';
+    },
+
+    async setServerHealth(serverId: string, isHealthy: boolean): Promise<void> {
+      await redis.setex(
+        REDIS_KEYS.SERVER_HEALTH(serverId),
+        CACHE_TTL.SERVER_HEALTH,
+        isHealthy ? 'true' : 'false'
+      );
     },
 
     // Generic cache operations

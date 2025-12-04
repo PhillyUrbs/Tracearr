@@ -18,8 +18,13 @@ import { createHash, randomBytes } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { MobileConfig, MobileSession, MobilePairResponse } from '@tracearr/shared';
+import { REDIS_KEYS, CACHE_TTL } from '@tracearr/shared';
 import { db } from '../db/client.js';
 import { mobileTokens, mobileSessions, servers, users } from '../db/schema.js';
+
+// Rate limits for mobile auth endpoints
+const MOBILE_PAIR_MAX_ATTEMPTS = 5; // 5 attempts per 15 minutes
+const MOBILE_REFRESH_MAX_ATTEMPTS = 30; // 30 attempts per 15 minutes
 
 // Token format: trr_mob_<32 random bytes as base64url>
 const MOBILE_TOKEN_PREFIX = 'trr_mob_';
@@ -37,10 +42,16 @@ const mobilePairSchema = z.object({
   deviceName: z.string().min(1).max(100),
   deviceId: z.string().min(1).max(100),
   platform: z.enum(['ios', 'android']),
+  deviceSecret: z.string().min(32).max(64).optional(), // Base64-encoded device secret for push encryption
 });
 
 const mobileRefreshSchema = z.object({
   refreshToken: z.string().min(1),
+});
+
+const pushTokenSchema = z.object({
+  expoPushToken: z.string().min(1).regex(/^ExponentPushToken\[.+\]$/, 'Invalid Expo push token format'),
+  deviceSecret: z.string().min(32).max(64).optional(), // Update device secret for push encryption
 });
 
 /**
@@ -284,14 +295,33 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * POST /mobile/pair - Exchange mobile token for JWT
+   *
+   * Rate limited: 5 attempts per IP per 15 minutes to prevent brute force
    */
   app.post('/pair', async (request, reply) => {
+    // Rate limiting check
+    const clientIp = request.ip;
+    const rateLimitKey = REDIS_KEYS.RATE_LIMIT_MOBILE_PAIR(clientIp);
+    const currentCount = await app.redis.incr(rateLimitKey);
+
+    // Set TTL on first request
+    if (currentCount === 1) {
+      await app.redis.expire(rateLimitKey, CACHE_TTL.RATE_LIMIT);
+    }
+
+    if (currentCount > MOBILE_PAIR_MAX_ATTEMPTS) {
+      const ttl = await app.redis.ttl(rateLimitKey);
+      app.log.warn({ ip: clientIp, count: currentCount }, 'Mobile pair rate limit exceeded');
+      reply.header('Retry-After', String(ttl > 0 ? ttl : CACHE_TTL.RATE_LIMIT));
+      return reply.tooManyRequests('Too many pairing attempts. Please try again later.');
+    }
+
     const body = mobilePairSchema.safeParse(request.body);
     if (!body.success) {
       return reply.badRequest('Invalid pairing request');
     }
 
-    const { token, deviceName, deviceId, platform } = body.data;
+    const { token, deviceName, deviceId, platform, deviceSecret } = body.data;
 
     // Verify token starts with correct prefix
     if (!token.startsWith(MOBILE_TOKEN_PREFIX)) {
@@ -339,6 +369,7 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
         role: 'owner',
         serverIds,
         mobile: true, // Flag to identify mobile tokens
+        deviceId, // Device identifier for session targeting
       },
       { expiresIn: MOBILE_ACCESS_EXPIRY }
     );
@@ -365,6 +396,7 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
           refreshTokenHash,
           deviceName,
           platform,
+          deviceSecret: deviceSecret ?? null,
           lastSeenAt: new Date(),
         })
         .where(eq(mobileSessions.id, existingSession[0]!.id));
@@ -375,6 +407,7 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
         deviceName,
         deviceId,
         platform,
+        deviceSecret: deviceSecret ?? null,
       });
     }
 
@@ -406,8 +439,27 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * POST /mobile/refresh - Refresh mobile JWT
+   *
+   * Rate limited: 30 attempts per IP per 15 minutes to prevent abuse
    */
   app.post('/refresh', async (request, reply) => {
+    // Rate limiting check
+    const clientIp = request.ip;
+    const rateLimitKey = REDIS_KEYS.RATE_LIMIT_MOBILE_REFRESH(clientIp);
+    const currentCount = await app.redis.incr(rateLimitKey);
+
+    // Set TTL on first request
+    if (currentCount === 1) {
+      await app.redis.expire(rateLimitKey, CACHE_TTL.RATE_LIMIT);
+    }
+
+    if (currentCount > MOBILE_REFRESH_MAX_ATTEMPTS) {
+      const ttl = await app.redis.ttl(rateLimitKey);
+      app.log.warn({ ip: clientIp, count: currentCount }, 'Mobile refresh rate limit exceeded');
+      reply.header('Retry-After', String(ttl > 0 ? ttl : CACHE_TTL.RATE_LIMIT));
+      return reply.tooManyRequests('Too many refresh attempts. Please try again later.');
+    }
+
     const body = mobileRefreshSchema.safeParse(request.body);
     if (!body.success) {
       return reply.badRequest('Invalid refresh request');
@@ -457,6 +509,7 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
         role: 'owner',
         serverIds,
         mobile: true,
+        deviceId, // Device identifier for session targeting
       },
       { expiresIn: MOBILE_ACCESS_EXPIRY }
     );
@@ -486,5 +539,50 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
       accessToken,
       refreshToken: newRefreshToken,
     };
+  });
+
+  /**
+   * POST /mobile/push-token - Register/update Expo push token for notifications
+   */
+  app.post('/push-token', { preHandler: [app.requireMobile] }, async (request, reply) => {
+    const body = pushTokenSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.badRequest('Invalid push token format. Expected ExponentPushToken[...]');
+    }
+
+    const { expoPushToken, deviceSecret } = body.data;
+    const authUser = request.user;
+
+    // Ensure we have deviceId from JWT (required for mobile tokens)
+    if (!authUser.deviceId) {
+      return reply.badRequest('Invalid mobile token: missing deviceId. Please re-pair the device.');
+    }
+
+    // Build update object (only include deviceSecret if provided)
+    const updateData: { expoPushToken: string; lastSeenAt: Date; deviceSecret?: string } = {
+      expoPushToken,
+      lastSeenAt: new Date(),
+    };
+    if (deviceSecret) {
+      updateData.deviceSecret = deviceSecret;
+    }
+
+    // Update only the specific device session identified by deviceId
+    const updated = await db
+      .update(mobileSessions)
+      .set(updateData)
+      .where(eq(mobileSessions.deviceId, authUser.deviceId))
+      .returning({ id: mobileSessions.id });
+
+    if (updated.length === 0) {
+      return reply.notFound('No mobile session found for this device. Please pair the device first.');
+    }
+
+    app.log.info(
+      { userId: authUser.userId, deviceId: authUser.deviceId },
+      'Push token registered for mobile session'
+    );
+
+    return { success: true, updatedSessions: updated.length };
   });
 };

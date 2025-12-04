@@ -18,6 +18,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     authenticate: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     requireOwner: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireMobile: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
   }
 }
 
@@ -55,6 +56,19 @@ const authPlugin: FastifyPluginAsync = async (app) => {
 
       if (request.user.role !== 'owner') {
         reply.forbidden('Owner access required');
+      }
+    } catch {
+      reply.unauthorized('Invalid or expired token');
+    }
+  });
+
+  // Require mobile token decorator - validates token was issued for mobile app
+  app.decorate('requireMobile', async function (request: FastifyRequest, reply: FastifyReply) {
+    try {
+      await request.jwtVerify();
+
+      if (!request.user.mobile) {
+        reply.forbidden('Mobile access token required');
       }
     } catch {
       reply.unauthorized('Invalid or expired token');
