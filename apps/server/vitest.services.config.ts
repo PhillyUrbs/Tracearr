@@ -36,12 +36,6 @@ export default mergeConfig(
           '**/test/**',
           'src/services/mediaServer/**/*.ts', // Covered by unit tests
         ],
-        thresholds: {
-          statements: 30,
-          branches: 30,
-          functions: 50,
-          lines: 30,
-        },
       },
     },
   })

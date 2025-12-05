@@ -24,6 +24,8 @@ export const sharedConfig: UserConfig = {
   resolve: {
     alias: {
       '@tracearr/shared': resolve(__dirname, '../../packages/shared/src'),
+      // Use built files for test-utils to handle .js extension imports properly
+      '@tracearr/test-utils': resolve(__dirname, '../../packages/test-utils/dist'),
     },
   },
 };

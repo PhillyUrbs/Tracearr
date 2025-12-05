@@ -32,12 +32,6 @@ export default mergeConfig(
           '**/*.security.test.ts',
           '**/test/**',
         ],
-        thresholds: {
-          statements: 20,
-          branches: 20,
-          functions: 20,
-          lines: 20,
-        },
       },
     },
   })

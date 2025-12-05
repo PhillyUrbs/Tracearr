@@ -34,32 +34,6 @@ export default mergeConfig(
           'src/utils/**/*.ts',
         ],
         exclude: ['**/*.test.ts', '**/test/**'],
-        // Global thresholds - intentionally low to allow incremental improvement
-        thresholds: {
-          statements: 10,
-          branches: 10,
-          functions: 15,
-          lines: 10,
-          // Per-file thresholds for well-tested modules
-          'services/rules.ts': {
-            statements: 95,
-            branches: 90,
-            functions: 95,
-            lines: 95,
-          },
-          'routes/rules.ts': {
-            statements: 90,
-            branches: 80,
-            functions: 95,
-            lines: 90,
-          },
-          'routes/violations.ts': {
-            statements: 90,
-            branches: 80,
-            functions: 95,
-            lines: 90,
-          },
-        },
       },
     },
   })

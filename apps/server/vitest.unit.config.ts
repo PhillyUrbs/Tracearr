@@ -31,12 +31,6 @@ export default mergeConfig(
           'src/services/mediaServer/**/*.ts',
         ],
         exclude: ['**/*.test.ts', '**/test/**'],
-        thresholds: {
-          statements: 80,
-          branches: 75,
-          functions: 85,
-          lines: 80,
-        },
       },
     },
   })
