@@ -10,6 +10,7 @@ import {
   playsCountSince,
   watchTimeSince,
   violationsCountSince,
+  uniqueUsersSince,
 } from '../../db/prepared.js';
 
 export const dashboardRoutes: FastifyPluginAsync = async (app) => {
@@ -49,10 +50,13 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
       const last24h = new Date(Date.now() - TIME_MS.DAY);
 
       // Use prepared statements for dashboard queries (10-30% faster due to plan reuse)
-      const [todayPlaysResult, watchTimeResult, alertsResult] = await Promise.all([
+      // Note: todayPlays, watchTime, and activeUsers all use todayStart for consistency (UI shows "today")
+      // alertsLast24h uses last24h as its label indicates
+      const [todayPlaysResult, watchTimeResult, alertsResult, activeUsersResult] = await Promise.all([
         playsCountSince.execute({ since: todayStart }),
-        watchTimeSince.execute({ since: last24h }),
+        watchTimeSince.execute({ since: todayStart }),
         violationsCountSince.execute({ since: last24h }),
+        uniqueUsersSince.execute({ since: todayStart }),
       ]);
 
       const todayPlays = todayPlaysResult[0]?.count ?? 0;
@@ -60,12 +64,14 @@ export const dashboardRoutes: FastifyPluginAsync = async (app) => {
         (Number(watchTimeResult[0]?.totalMs ?? 0) / (1000 * 60 * 60)) * 10
       ) / 10;
       const alertsLast24h = alertsResult[0]?.count ?? 0;
+      const activeUsersToday = activeUsersResult[0]?.count ?? 0;
 
       const stats: DashboardStats = {
         activeStreams,
         todayPlays,
         watchTimeHours,
         alertsLast24h,
+        activeUsersToday,
       };
 
       // Cache for 60 seconds

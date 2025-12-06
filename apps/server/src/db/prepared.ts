@@ -58,6 +58,19 @@ export const violationsCountSince = db
   .prepare('violations_count_since');
 
 /**
+ * Count unique active users since a given date
+ * Used for: Dashboard "Active Users Today" metric
+ * Called: Every dashboard page load
+ */
+export const uniqueUsersSince = db
+  .select({
+    count: sql<number>`count(DISTINCT server_user_id)::int`,
+  })
+  .from(sessions)
+  .where(gte(sessions.startedAt, sql.placeholder('since')))
+  .prepare('unique_users_since');
+
+/**
  * Count unacknowledged violations
  * Used for: Alert badge in navigation
  * Called: On app load and after acknowledgment
