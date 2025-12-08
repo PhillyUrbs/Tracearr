@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Logo } from '@/components/brand/Logo';
+import { ServerSelector } from './ServerSelector';
 
 interface NavItem {
   name: string;
@@ -83,6 +84,9 @@ export function Sidebar() {
     <aside className="flex w-64 shrink-0 flex-col border-r bg-card">
       <div className="flex h-16 shrink-0 items-center border-b px-6">
         <Logo size="md" />
+      </div>
+      <div className="border-b py-2">
+        <ServerSelector />
       </div>
       <nav className="flex-1 space-y-1 overflow-auto p-4">
         {navigation.map((entry) => {
