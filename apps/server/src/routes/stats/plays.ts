@@ -10,7 +10,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { sql } from 'drizzle-orm';
 import { statsQuerySchema } from '@tracearr/shared';
 import { db } from '../../db/client.js';
-import { getDateRange } from './utils.js';
+import { resolveDateRange } from './utils.js';
 import { validateServerAccess } from '../../utils/serverFiltering.js';
 
 /**
@@ -49,9 +49,9 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -63,12 +63,18 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+
       const result = await db.execute(sql`
         SELECT
           date_trunc('day', started_at)::date::text as date,
           count(DISTINCT COALESCE(reference_id, id))::int as count
         FROM sessions
-        WHERE started_at >= ${startDate}
+        ${baseWhere}
+        ${period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``}
         ${serverFilter}
         GROUP BY date_trunc('day', started_at)
         ORDER BY date_trunc('day', started_at)
@@ -90,9 +96,9 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -105,12 +111,18 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
       const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+
       const result = await db.execute(sql`
         SELECT
           EXTRACT(DOW FROM started_at)::int as day,
           COUNT(DISTINCT COALESCE(reference_id, id))::int as count
         FROM sessions
-        WHERE started_at >= ${startDate}
+        ${baseWhere}
+        ${period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``}
         ${serverFilter}
         GROUP BY EXTRACT(DOW FROM started_at)
         ORDER BY day
@@ -142,9 +154,9 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -156,12 +168,18 @@ export const playsRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+
       const result = await db.execute(sql`
         SELECT
           EXTRACT(HOUR FROM started_at)::int as hour,
           COUNT(DISTINCT COALESCE(reference_id, id))::int as count
         FROM sessions
-        WHERE started_at >= ${startDate}
+        ${baseWhere}
+        ${period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``}
         ${serverFilter}
         GROUP BY EXTRACT(HOUR FROM started_at)
         ORDER BY hour

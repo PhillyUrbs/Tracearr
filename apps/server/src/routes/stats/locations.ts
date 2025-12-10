@@ -9,8 +9,9 @@
 
 import type { FastifyPluginAsync } from 'fastify';
 import { sql } from 'drizzle-orm';
-import { TIME_MS, locationStatsQuerySchema } from '@tracearr/shared';
+import { locationStatsQuerySchema } from '@tracearr/shared';
 import { db } from '../../db/client.js';
+import { resolveDateRange } from './utils.js';
 
 interface LocationFilters {
   users: { id: string; username: string }[];
@@ -23,8 +24,9 @@ export const locationsRoutes: FastifyPluginAsync = async (app) => {
    * GET /locations - Geo data for stream map with filtering
    *
    * Supports filtering by:
-   * - days: Number of days to look back (default: 30)
-   * - userId: Filter to specific user
+   * - period: Time period (day, week, month, year, all, custom)
+   * - startDate/endDate: For custom period
+   * - serverUserId: Filter to specific user
    * - serverId: Filter to specific server
    * - mediaType: Filter by movie/episode/track
    */
@@ -37,16 +39,23 @@ export const locationsRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { days, serverUserId, serverId, mediaType } = query.data;
-      const startDate = new Date(Date.now() - days * TIME_MS.DAY);
+      const { period, startDate, endDate, serverUserId, serverId, mediaType } = query.data;
+      const dateRange = resolveDateRange(period, startDate, endDate);
       const authUser = request.user;
 
       // Build WHERE conditions for main query (all qualified with 's.' for sessions table)
       const conditions: ReturnType<typeof sql>[] = [
-        sql`s.started_at >= ${startDate}`,
         sql`s.geo_lat IS NOT NULL`,
         sql`s.geo_lon IS NOT NULL`,
       ];
+
+      // Add date range filter (null start means "all time")
+      if (dateRange.start) {
+        conditions.push(sql`s.started_at >= ${dateRange.start}`);
+      }
+      if (period === 'custom') {
+        conditions.push(sql`s.started_at < ${dateRange.end}`);
+      }
 
       // Apply server access restriction if user has limited access
       // Note: We build the array literal explicitly because Drizzle doesn't auto-convert JS arrays for ANY()
@@ -70,10 +79,17 @@ export const locationsRoutes: FastifyPluginAsync = async (app) => {
       // Build cascading filter conditions - each filter type sees options based on OTHER active filters
       // This gives users a consistent UX where selecting one filter narrows down the others
       const baseConditions: ReturnType<typeof sql>[] = [
-        sql`s.started_at >= ${startDate}`,
         sql`s.geo_lat IS NOT NULL`,
         sql`s.geo_lon IS NOT NULL`,
       ];
+
+      // Add date range filter for cascading filters
+      if (dateRange.start) {
+        baseConditions.push(sql`s.started_at >= ${dateRange.start}`);
+      }
+      if (period === 'custom') {
+        baseConditions.push(sql`s.started_at < ${dateRange.end}`);
+      }
       if (authUser.serverIds.length > 0) {
         const baseServerIdArray = sql.raw(`ARRAY[${authUser.serverIds.map((id: string) => `'${id}'::uuid`).join(',')}]`);
         baseConditions.push(sql`s.server_id = ANY(${baseServerIdArray})`);

@@ -9,7 +9,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { sql } from 'drizzle-orm';
 import { statsQuerySchema } from '@tracearr/shared';
 import { db } from '../../db/client.js';
-import { getDateRange } from './utils.js';
+import { resolveDateRange } from './utils.js';
 import { validateServerAccess } from '../../utils/serverFiltering.js';
 
 /**
@@ -52,9 +52,9 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -65,6 +65,12 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
+
+      // For all-time queries, we need a base WHERE clause
+      const startDateFilter = dateRange.start
+        ? sql`started_at >= ${dateRange.start}`
+        : sql`true`;
+      const customEndFilter = period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``;
 
       // Run both queries in parallel for better performance
       const [moviesResult, showsResult] = await Promise.all([
@@ -79,7 +85,8 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
             MAX(server_id::text) as server_id,
             MAX(rating_key) as rating_key
           FROM sessions
-          WHERE started_at >= ${startDate} AND media_type = 'movie'
+          WHERE ${startDateFilter} AND media_type = 'movie'
+          ${customEndFilter}
           ${serverFilter}
           GROUP BY media_title, year
           ORDER BY play_count DESC
@@ -97,7 +104,8 @@ export const contentRoutes: FastifyPluginAsync = async (app) => {
             MAX(server_id::text) as server_id,
             MAX(rating_key) as rating_key
           FROM sessions
-          WHERE started_at >= ${startDate} AND media_type = 'episode' AND grandparent_title IS NOT NULL
+          WHERE ${startDateFilter} AND media_type = 'episode' AND grandparent_title IS NOT NULL
+          ${customEndFilter}
           ${serverFilter}
           GROUP BY grandparent_title
           ORDER BY play_count DESC

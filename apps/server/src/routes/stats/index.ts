@@ -40,4 +40,7 @@ export const statsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 // Re-export utilities for potential use by other modules
-export { getDateRange, hasAggregates } from './utils.js';
+export { resolveDateRange, hasAggregates } from './utils.js';
+// Deprecated - kept for backwards compatibility
+// eslint-disable-next-line @typescript-eslint/no-deprecated
+export { getDateRange } from './utils.js';

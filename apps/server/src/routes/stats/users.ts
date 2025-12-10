@@ -13,7 +13,7 @@ import { sql } from 'drizzle-orm';
 import { statsQuerySchema } from '@tracearr/shared';
 import type { UserStats, TopUserStats } from '@tracearr/shared';
 import { db } from '../../db/client.js';
-import { getDateRange } from './utils.js';
+import { resolveDateRange } from './utils.js';
 import { validateServerAccess } from '../../utils/serverFiltering.js';
 
 /**
@@ -52,9 +52,9 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -66,6 +66,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // Build date filter for JOIN condition
+      const dateJoinFilter = dateRange.start
+        ? period === 'custom'
+          ? sql`AND s.started_at >= ${dateRange.start} AND s.started_at < ${dateRange.end}`
+          : sql`AND s.started_at >= ${dateRange.start}`
+        : sql``; // All-time: no date filter
+
       // Query server_users with session stats
       // Stats are per-server-account (ServerUser), not per-identity (User)
       const result = await db.execute(sql`
@@ -76,7 +83,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
           COUNT(DISTINCT COALESCE(s.reference_id, s.id))::int as play_count,
           COALESCE(SUM(s.duration_ms), 0)::bigint as watch_time_ms
         FROM server_users su
-        LEFT JOIN sessions s ON s.server_user_id = su.id AND s.started_at >= ${startDate}
+        LEFT JOIN sessions s ON s.server_user_id = su.id ${dateJoinFilter}
         WHERE true ${serverFilter}
         GROUP BY su.id, su.username, su.thumb_url
         ORDER BY play_count DESC
@@ -113,9 +120,9 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -126,6 +133,13 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
+
+      // Build date filter for JOIN condition
+      const dateJoinFilter = dateRange.start
+        ? period === 'custom'
+          ? sql`AND s.started_at >= ${dateRange.start} AND s.started_at < ${dateRange.end}`
+          : sql`AND s.started_at >= ${dateRange.start}`
+        : sql``; // All-time: no date filter
 
       // Query server_users with session stats
       // Stats are per-server-account (ServerUser), not per-identity (User)
@@ -142,7 +156,7 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
           MODE() WITHIN GROUP (ORDER BY s.media_type) as top_media_type,
           MODE() WITHIN GROUP (ORDER BY COALESCE(s.grandparent_title, s.media_title)) as top_content
         FROM server_users su
-        LEFT JOIN sessions s ON s.server_user_id = su.id AND s.started_at >= ${startDate}
+        LEFT JOIN sessions s ON s.server_user_id = su.id ${dateJoinFilter}
         WHERE true ${serverFilter}
         GROUP BY su.id, su.username, su.thumb_url, su.server_id, su.trust_score
         ORDER BY watch_time_ms DESC

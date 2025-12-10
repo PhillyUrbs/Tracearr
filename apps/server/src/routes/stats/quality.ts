@@ -12,7 +12,7 @@ import { sql } from 'drizzle-orm';
 import { statsQuerySchema } from '@tracearr/shared';
 import { db } from '../../db/client.js';
 import '../../db/schema.js';
-import { getDateRange } from './utils.js';
+import { resolveDateRange } from './utils.js';
 import { validateServerAccess } from '../../utils/serverFiltering.js';
 
 /**
@@ -51,9 +51,9 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -65,12 +65,18 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+
       const result = await db.execute(sql`
         SELECT
           is_transcode,
           COUNT(DISTINCT COALESCE(reference_id, id))::int as count
         FROM sessions
-        WHERE started_at >= ${startDate}
+        ${baseWhere}
+        ${period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``}
         ${serverFilter}
         GROUP BY is_transcode
       `);
@@ -103,9 +109,9 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -117,12 +123,18 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+
       const result = await db.execute(sql`
         SELECT
           platform,
           COUNT(DISTINCT COALESCE(reference_id, id))::int as count
         FROM sessions
-        WHERE started_at >= ${startDate}
+        ${baseWhere}
+        ${period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``}
         ${serverFilter}
         GROUP BY platform
         ORDER BY count DESC
@@ -144,9 +156,9 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -158,11 +170,18 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time queries, we need a base WHERE clause
+      const baseWhere = dateRange.start
+        ? sql`WHERE started_at >= ${dateRange.start}`
+        : sql`WHERE true`;
+      const customEndFilter = period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``;
+
       const [totalResult, byTypeResult] = await Promise.all([
         db.execute(sql`
           SELECT COALESCE(SUM(duration_ms), 0)::bigint as total_ms
           FROM sessions
-          WHERE started_at >= ${startDate}
+          ${baseWhere}
+          ${customEndFilter}
           ${serverFilter}
         `),
         db.execute(sql`
@@ -170,7 +189,8 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
             media_type,
             COALESCE(SUM(duration_ms), 0)::bigint as total_ms
           FROM sessions
-          WHERE started_at >= ${startDate}
+          ${baseWhere}
+          ${customEndFilter}
           ${serverFilter}
           GROUP BY media_type
         `),
@@ -210,9 +230,9 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
         return reply.badRequest('Invalid query parameters');
       }
 
-      const { period, serverId } = query.data;
+      const { period, startDate, endDate, serverId } = query.data;
       const authUser = request.user;
-      const startDate = getDateRange(period);
+      const dateRange = resolveDateRange(period, startDate, endDate);
 
       // Validate server access if specific server requested
       if (serverId) {
@@ -224,6 +244,11 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
 
       const serverFilter = buildServerFilterSql(serverId, authUser);
 
+      // For all-time, we use epoch as start; otherwise use the resolved date
+      const queryStartDate = dateRange.start ?? new Date(0);
+      const customEndFilter = period === 'custom' ? sql`AND started_at < ${dateRange.end}` : sql``;
+      const customStopEndFilter = period === 'custom' ? sql`AND stopped_at < ${dateRange.end}` : sql``;
+
       // Event-based calculation with proper boundary handling
       // Uses TimescaleDB-optimized time-based filtering on hypertable
       const result = await db.execute(sql`
@@ -231,13 +256,13 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
           -- Sessions already running at startDate (started before, not yet stopped)
           -- These need a +1 event at startDate to establish initial state
           SELECT
-            ${startDate}::timestamp AS event_time,
+            ${queryStartDate}::timestamp AS event_time,
             1 AS delta,
             CASE WHEN is_transcode THEN 0 ELSE 1 END AS direct_delta,
             CASE WHEN is_transcode THEN 1 ELSE 0 END AS transcode_delta
           FROM sessions
-          WHERE started_at < ${startDate}
-            AND (stopped_at IS NULL OR stopped_at >= ${startDate})
+          WHERE started_at < ${queryStartDate}
+            AND (stopped_at IS NULL OR stopped_at >= ${queryStartDate})
             ${serverFilter}
 
           UNION ALL
@@ -249,7 +274,8 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
             CASE WHEN is_transcode THEN 0 ELSE 1 END AS direct_delta,
             CASE WHEN is_transcode THEN 1 ELSE 0 END AS transcode_delta
           FROM sessions
-          WHERE started_at >= ${startDate}
+          WHERE started_at >= ${queryStartDate}
+            ${customEndFilter}
             ${serverFilter}
 
           UNION ALL
@@ -262,7 +288,8 @@ export const qualityRoutes: FastifyPluginAsync = async (app) => {
             CASE WHEN is_transcode THEN -1 ELSE 0 END AS transcode_delta
           FROM sessions
           WHERE stopped_at IS NOT NULL
-            AND stopped_at >= ${startDate}
+            AND stopped_at >= ${queryStartDate}
+            ${customStopEndFilter}
             ${serverFilter}
         ),
         running_counts AS (
