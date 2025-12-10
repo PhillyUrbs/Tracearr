@@ -204,7 +204,7 @@ Check the [issues](https://github.com/connorgallopo/Tracearr/issues) for things 
 
 **v1.5** (next milestone)
 - [ ] Mobile app (iOS & Android) — *in development*
-- [ ] Stream termination (kill suspicious streams)
+- [x] Stream termination (kill suspicious streams)
 - [ ] Account suspension automation
 - [ ] Email notifications
 - [ ] Telegram notifier
