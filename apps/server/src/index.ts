@@ -58,6 +58,11 @@ import {
   startNotificationWorker,
   shutdownNotificationQueue,
 } from './jobs/notificationQueue.js';
+import {
+  initImportQueue,
+  startImportWorker,
+  shutdownImportQueue,
+} from './jobs/importQueue.js';
 import { initPushRateLimiter } from './services/pushRateLimiter.js';
 import { db, runMigrations } from './db/client.js';
 import { initTimescaleDB, getTimescaleStatus } from './db/timescale.js';
@@ -176,6 +181,16 @@ async function buildApp(options: { trustProxy?: boolean } = {}) {
     // Don't throw - notifications are non-critical
   }
 
+  // Initialize import queue (uses Redis for job storage)
+  try {
+    initImportQueue(redisUrl);
+    startImportWorker();
+    app.log.info('Import queue initialized');
+  } catch (err) {
+    app.log.error({ err }, 'Failed to initialize import queue');
+    // Don't throw - imports can fall back to direct execution
+  }
+
   // Initialize poller with cache services and Redis client
   initializePoller(cacheService, pubSubService, app.redis);
 
@@ -189,13 +204,14 @@ async function buildApp(options: { trustProxy?: boolean } = {}) {
     // Don't throw - SSE is optional, fallback to polling
   }
 
-  // Cleanup pub/sub redis and notification queue on close
+  // Cleanup pub/sub redis, notification queue, and import queue on close
   app.addHook('onClose', async () => {
     await pubSubRedis.quit();
     stopPoller();
     await sseManager.stop();
     stopSSEProcessor();
     await shutdownNotificationQueue();
+    await shutdownImportQueue();
   });
 
   // Health check endpoint
@@ -294,6 +310,7 @@ async function start() {
         app.log.info(`Received ${signal}, shutting down gracefully...`);
         stopPoller();
         void shutdownNotificationQueue();
+        void shutdownImportQueue();
         void app.close().then(() => process.exit(0));
       });
     }
