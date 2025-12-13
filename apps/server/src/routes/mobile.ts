@@ -33,10 +33,18 @@ import { hasServerAccess } from '../utils/serverFiltering.js';
 const MOBILE_PAIR_MAX_ATTEMPTS = 5; // 5 attempts per 15 minutes
 const MOBILE_REFRESH_MAX_ATTEMPTS = 30; // 30 attempts per 15 minutes
 
+// Beta mode: allows reusable tokens, no expiry, unlimited devices
+// Useful for TestFlight/beta testing where you need to share a single token
+// Using a function to allow dynamic checking (useful for testing)
+function isBetaMode(): boolean {
+  return process.env.MOBILE_BETA_MODE === 'true';
+}
+
 // Limits
 const MAX_PAIRED_DEVICES = 5;
 const MAX_PENDING_TOKENS = 3;
 const TOKEN_EXPIRY_MINUTES = 15;
+const BETA_TOKEN_EXPIRY_YEARS = 100; // Effectively never expires
 const TOKEN_GEN_RATE_LIMIT = 3; // Max tokens per 5 minutes
 const TOKEN_GEN_RATE_WINDOW = 5 * 60; // 5 minutes in seconds
 
@@ -91,6 +99,11 @@ function generateRefreshToken(): string {
 }
 
 export const mobileRoutes: FastifyPluginAsync = async (app) => {
+  // Log beta mode status on startup
+  if (isBetaMode()) {
+    app.log.warn('MOBILE_BETA_MODE enabled: tokens are reusable, never expire, unlimited devices allowed');
+  }
+
   // ============================================
   // Settings endpoints (owner only)
   // ============================================
@@ -262,14 +275,19 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
           .from(mobileSessions);
         const deviceCount = sessionsCount[0]?.count ?? 0;
 
-        if (deviceCount >= MAX_PAIRED_DEVICES) {
+        // In beta mode, allow unlimited devices
+        if (!isBetaMode() && deviceCount >= MAX_PAIRED_DEVICES) {
           throw new Error('MAX_PAIRED_DEVICES');
         }
 
         // Generate token
         const token = generateMobileToken();
         const tokenHash = hashToken(token);
-        const expires = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
+        // In beta mode, tokens effectively never expire
+        const expiryMs = isBetaMode()
+          ? BETA_TOKEN_EXPIRY_YEARS * 365 * 24 * 60 * 60 * 1000
+          : TOKEN_EXPIRY_MINUTES * 60 * 1000;
+        const expires = new Date(Date.now() + expiryMs);
 
         await tx.insert(mobileTokens).values({
           tokenHash,
@@ -464,7 +482,8 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
       .where(eq(mobileSessions.deviceId, deviceId))
       .limit(1);
 
-    if (existingSession.length === 0 && deviceCount >= MAX_PAIRED_DEVICES) {
+    // In beta mode, allow unlimited devices
+    if (!isBetaMode() && existingSession.length === 0 && deviceCount >= MAX_PAIRED_DEVICES) {
       return reply.badRequest(
         `Maximum of ${MAX_PAIRED_DEVICES} devices allowed. Remove a device first.`
       );
@@ -501,7 +520,8 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
 
         const tokenRow = tokenRows[0]!;
 
-        if (tokenRow.usedAt) {
+        // In beta mode, allow tokens to be reused
+        if (tokenRow.usedAt && !isBetaMode()) {
           throw new Error('TOKEN_ALREADY_USED');
         }
 
@@ -569,10 +589,13 @@ export const mobileRoutes: FastifyPluginAsync = async (app) => {
         }
 
         // Mark token as used (not deleted - for audit trail)
-        await tx
-          .update(mobileTokens)
-          .set({ usedAt: new Date() })
-          .where(eq(mobileTokens.id, tokenRow.id));
+        // In beta mode, don't mark as used so token can be reused
+        if (!isBetaMode()) {
+          await tx
+            .update(mobileTokens)
+            .set({ usedAt: new Date() })
+            .where(eq(mobileTokens.id, tokenRow.id));
+        }
 
         // Generate access token
         const accessToken = app.jwt.sign(
