@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { NavLink, Routes, Route } from 'react-router';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Dialog,
@@ -42,6 +43,8 @@ import {
   Plus,
   Clock,
   KeyRound,
+  Upload,
+  FileJson,
 } from 'lucide-react';
 import { MediaServerIcon } from '@/components/icons/MediaServerIcon';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -54,13 +57,7 @@ import { toast } from 'sonner';
 import { PlexServerSelector } from '@/components/auth/PlexServerSelector';
 import { NotificationRoutingMatrix } from '@/components/settings/NotificationRoutingMatrix';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
-import type {
-  Server,
-  Settings as SettingsType,
-  TautulliImportProgress,
-  MobileSession,
-  MobileQRPayload,
-} from '@tracearr/shared';
+import type { Server, Settings as SettingsType, TautulliImportProgress, JellystatImportProgress, MobileSession, MobileQRPayload } from '@tracearr/shared';
 import {
   useSettings,
   useUpdateSettings,
@@ -80,10 +77,10 @@ function SettingsNav() {
     { href: '/settings', label: 'General', end: true },
     { href: '/settings/appearance', label: 'Appearance' },
     { href: '/settings/servers', label: 'Servers' },
+    { href: '/settings/network', label: 'Network' },
     { href: '/settings/notifications', label: 'Notifications' },
     { href: '/settings/access', label: 'Access Control' },
     { href: '/settings/mobile', label: 'Mobile' },
-    { href: '/settings/network', label: 'Network' },
     { href: '/settings/import', label: 'Import' },
   ];
 
@@ -151,10 +148,13 @@ function GeneralSettings() {
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <Label className="text-base">Unit System</Label>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Choose how distances and speeds are displayed
           </p>
-          <Select value={settings?.unitSystem ?? 'metric'} onValueChange={handleUnitSystemChange}>
+          <Select
+            value={settings?.unitSystem ?? 'metric'}
+            onValueChange={handleUnitSystemChange}
+          >
             <SelectTrigger className="w-48">
               <SelectValue />
             </SelectTrigger>
@@ -168,17 +168,20 @@ function GeneralSettings() {
         <div className="flex items-center justify-between">
           <div>
             <Label className="text-base">Session Sync</Label>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Enable session tracking for your media servers
             </p>
           </div>
-          <Switch checked={settings?.pollerEnabled ?? true} onCheckedChange={handleTogglePoller} />
+          <Switch
+            checked={settings?.pollerEnabled ?? true}
+            onCheckedChange={handleTogglePoller}
+          />
         </div>
 
         <div className="flex items-center justify-between">
           <div>
             <Label className="text-base">Sync Interval</Label>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Polling frequency for Jellyfin/Emby (5-300 seconds)
             </p>
           </div>
@@ -189,21 +192,19 @@ function GeneralSettings() {
               max={300}
               className="w-20"
               defaultValue={intervalSeconds}
-              onBlur={(e) => {
-                handleIntervalChange(parseInt(e.target.value, 10) || 15);
-              }}
+              onBlur={(e) => { handleIntervalChange(parseInt(e.target.value, 10) || 15); }}
               disabled={!settings?.pollerEnabled}
             />
-            <span className="text-muted-foreground text-sm">sec</span>
+            <span className="text-sm text-muted-foreground">sec</span>
           </div>
         </div>
 
-        <div className="bg-muted/50 space-y-2 rounded-lg p-4">
-          <p className="text-muted-foreground text-sm">
+        <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+          <p className="text-sm text-muted-foreground">
             <strong>Plex:</strong> Uses real-time updates via SSE. Polling is only used as a
             fallback if the connection fails.
           </p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             <strong>Jellyfin/Emby:</strong> Uses the sync interval above for session detection.
             Lower values provide faster updates but increase server load.
           </p>
@@ -228,9 +229,7 @@ function ServerSettings() {
   const [connectError, setConnectError] = useState<string | null>(null);
 
   // Plex server discovery state
-  const [plexDialogStep, setPlexDialogStep] = useState<
-    'loading' | 'no-plex' | 'no-servers' | 'select'
-  >('loading');
+  const [plexDialogStep, setPlexDialogStep] = useState<'loading' | 'no-plex' | 'no-servers' | 'select'>('loading');
   const [plexServers, setPlexServers] = useState<PlexDiscoveredServer[]>([]);
   const [connectingPlexServer, setConnectingPlexServer] = useState<string | null>(null);
 
@@ -252,14 +251,12 @@ function ServerSettings() {
   // Handle both array and wrapped response formats
   const servers = Array.isArray(serversData)
     ? serversData
-    : ((serversData as unknown as { data?: Server[] })?.data ?? []);
+    : (serversData as unknown as { data?: Server[] })?.data ?? [];
 
   const handleDelete = () => {
     if (deleteId) {
       deleteServer.mutate(deleteId, {
-        onSuccess: () => {
-          setDeleteId(null);
-        },
+        onSuccess: () => { setDeleteId(null); },
       });
     }
   };
@@ -309,11 +306,7 @@ function ServerSettings() {
   };
 
   // Handle Plex server selection from PlexServerSelector
-  const handlePlexServerSelect = async (
-    serverUri: string,
-    name: string,
-    clientIdentifier: string
-  ) => {
+  const handlePlexServerSelect = async (serverUri: string, name: string, clientIdentifier: string) => {
     setConnectingPlexServer(name);
     setConnectError(null);
 
@@ -350,10 +343,7 @@ function ServerSettings() {
     setConnectError(null);
 
     try {
-      const connectFn =
-        serverType === 'jellyfin'
-          ? api.auth.connectJellyfinWithApiKey
-          : api.auth.connectEmbyWithApiKey;
+      const connectFn = serverType === 'jellyfin' ? api.auth.connectJellyfinWithApiKey : api.auth.connectEmbyWithApiKey;
       const result = await connectFn({
         serverUrl,
         serverName,
@@ -410,11 +400,7 @@ function ServerSettings() {
               Manage your connected Plex, Jellyfin, and Emby servers
             </CardDescription>
           </div>
-          <Button
-            onClick={() => {
-              setShowAddDialog(true);
-            }}
-          >
+          <Button onClick={() => { setShowAddDialog(true); }}>
             <Plus className="mr-2 h-4 w-4" />
             Add Server
           </Button>
@@ -422,9 +408,9 @@ function ServerSettings() {
         <CardContent>
           {!servers || servers.length === 0 ? (
             <div className="flex h-32 flex-col items-center justify-center gap-2 rounded-lg border border-dashed">
-              <ServerIcon className="text-muted-foreground h-8 w-8" />
+              <ServerIcon className="h-8 w-8 text-muted-foreground" />
               <p className="text-muted-foreground">No servers connected</p>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 Click "Add Server" to connect a Jellyfin or Emby server
               </p>
             </div>
@@ -434,12 +420,8 @@ function ServerSettings() {
                 <ServerCard
                   key={server.id}
                   server={server}
-                  onSync={() => {
-                    handleSync(server.id);
-                  }}
-                  onDelete={() => {
-                    setDeleteId(server.id);
-                  }}
+                  onSync={() => { handleSync(server.id); }}
+                  onDelete={() => { setDeleteId(server.id); }}
                   isSyncing={syncServer.isPending}
                 />
               ))}
@@ -452,9 +434,7 @@ function ServerSettings() {
       <Dialog
         open={showAddDialog}
         onOpenChange={(open) => {
-          if (!open) {
-            resetAddForm();
-          }
+          if (!open) { resetAddForm(); }
           setShowAddDialog(open);
         }}
       >
@@ -488,7 +468,9 @@ function ServerSettings() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {user?.role === 'owner' && <SelectItem value="plex">Plex</SelectItem>}
+                  {user?.role === 'owner' && (
+                    <SelectItem value="plex">Plex</SelectItem>
+                  )}
                   <SelectItem value="jellyfin">Jellyfin</SelectItem>
                   <SelectItem value="emby">Emby</SelectItem>
                 </SelectContent>
@@ -499,33 +481,35 @@ function ServerSettings() {
             {serverType === 'plex' ? (
               <>
                 {plexDialogStep === 'loading' && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8">
-                    <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
-                    <p className="text-muted-foreground text-sm">
+                  <div className="flex flex-col items-center justify-center py-8 gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
                       Discovering available Plex servers...
                     </p>
                   </div>
                 )}
 
                 {plexDialogStep === 'no-plex' && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                  <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
                     <AlertTriangle className="h-8 w-8 text-amber-500" />
                     <div>
                       <p className="font-medium">No Plex Account Linked</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
+                      <p className="text-sm text-muted-foreground mt-1">
                         You need to have at least one Plex server connected to add more.
                       </p>
                     </div>
-                    {connectError && <p className="text-destructive text-sm">{connectError}</p>}
+                    {connectError && (
+                      <p className="text-sm text-destructive">{connectError}</p>
+                    )}
                   </div>
                 )}
 
                 {plexDialogStep === 'no-servers' && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-                    <ServerIcon className="text-muted-foreground h-8 w-8" />
+                  <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+                    <ServerIcon className="h-8 w-8 text-muted-foreground" />
                     <div>
                       <p className="font-medium">All Servers Connected</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
+                      <p className="text-sm text-muted-foreground mt-1">
                         All your owned Plex servers are already connected to Tracearr.
                       </p>
                     </div>
@@ -543,7 +527,7 @@ function ServerSettings() {
                 )}
 
                 {connectError && plexDialogStep === 'select' && (
-                  <div className="text-destructive flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm text-destructive">
                     <XCircle className="h-4 w-4" />
                     {connectError}
                   </div>
@@ -558,13 +542,10 @@ function ServerSettings() {
                     id="serverUrl"
                     placeholder="http://192.168.1.100:8096"
                     value={serverUrl}
-                    onChange={(e) => {
-                      setServerUrl(e.target.value);
-                    }}
+                    onChange={(e) => { setServerUrl(e.target.value); }}
                   />
-                  <p className="text-muted-foreground text-xs">
-                    The URL where your {serverType === 'jellyfin' ? 'Jellyfin' : 'Emby'} server is
-                    accessible
+                  <p className="text-xs text-muted-foreground">
+                    The URL where your {serverType === 'jellyfin' ? 'Jellyfin' : 'Emby'} server is accessible
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -573,9 +554,7 @@ function ServerSettings() {
                     id="serverName"
                     placeholder="My Media Server"
                     value={serverName}
-                    onChange={(e) => {
-                      setServerName(e.target.value);
-                    }}
+                    onChange={(e) => { setServerName(e.target.value); }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -585,18 +564,16 @@ function ServerSettings() {
                     type="password"
                     placeholder="Enter your API key"
                     value={apiKey}
-                    onChange={(e) => {
-                      setApiKey(e.target.value);
-                    }}
+                    onChange={(e) => { setApiKey(e.target.value); }}
                   />
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {serverType === 'jellyfin'
                       ? 'Find this in Jellyfin Dashboard → API Keys'
                       : 'Find this in Emby Server → API Keys'}
                   </p>
                 </div>
                 {connectError && (
-                  <div className="text-destructive flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-sm text-destructive">
                     <XCircle className="h-4 w-4" />
                     {connectError}
                   </div>
@@ -606,13 +583,7 @@ function ServerSettings() {
           </div>
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAddDialog(false);
-                resetAddForm();
-              }}
-            >
+            <Button variant="outline" onClick={() => { setShowAddDialog(false); resetAddForm(); }}>
               Cancel
             </Button>
             {serverType !== 'plex' && (
@@ -633,9 +604,7 @@ function ServerSettings() {
 
       <ConfirmDialog
         open={!!deleteId}
-        onOpenChange={() => {
-          setDeleteId(null);
-        }}
+        onOpenChange={() => { setDeleteId(null); }}
         title="Remove Server"
         description="Are you sure you want to remove this server? All associated session data will be retained, but you won't be able to monitor new sessions from this server."
         confirmLabel="Remove"
@@ -660,14 +629,14 @@ function ServerCard({
   return (
     <div className="flex items-center justify-between rounded-lg border p-4">
       <div className="flex items-center gap-4">
-        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
           <MediaServerIcon type={server.type} className="h-6 w-6" />
         </div>
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-semibold">{server.name}</h3>
           </div>
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>{server.url}</span>
             <a
               href={server.url}
@@ -678,18 +647,23 @@ function ServerCard({
               <ExternalLink className="h-3 w-3" />
             </a>
           </div>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Added {format(new Date(server.createdAt), 'MMM d, yyyy')}
           </p>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={onSync} disabled={isSyncing}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onSync}
+          disabled={isSyncing}
+        >
           <RefreshCw className={cn('mr-1 h-4 w-4', isSyncing && 'animate-spin')} />
           Sync
         </Button>
         <Button variant="ghost" size="sm" onClick={onDelete}>
-          <Trash2 className="text-destructive h-4 w-4" />
+          <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
     </div>
@@ -701,82 +675,22 @@ function NotificationSettings() {
   const updateSettings = useUpdateSettings();
   const [webhookFormat, setWebhookFormat] = useState<string>('json');
   const [ntfyTopic, setNtfyTopic] = useState<string>('');
-  const [ntfyAuthToken, setNtfyAuthToken] = useState<string>('');
-  const [testingDiscord, setTestingDiscord] = useState(false);
-  const [testingCustom, setTestingCustom] = useState(false);
 
   // Sync state with loaded settings
   useEffect(() => {
     if (settings) {
       setWebhookFormat(settings.webhookFormat ?? 'json');
       setNtfyTopic(settings.ntfyTopic ?? '');
-      // Don't overwrite if already set (masked token from server shows as ********)
-      if (!ntfyAuthToken) {
-        setNtfyAuthToken('');
-      }
     }
-  }, [settings, ntfyAuthToken]);
+  }, [settings]);
 
-  const handleUrlChange = (
-    key: 'discordWebhookUrl' | 'customWebhookUrl' | 'ntfyTopic',
-    value: string
-  ) => {
+  const handleUrlChange = (key: 'discordWebhookUrl' | 'customWebhookUrl' | 'ntfyTopic', value: string) => {
     updateSettings.mutate({ [key]: value || null });
-  };
-
-  const handleNtfyAuthTokenSave = () => {
-    // Only save if the user entered a new token (not empty and not the masked placeholder)
-    if (ntfyAuthToken && ntfyAuthToken !== '********') {
-      updateSettings.mutate({ ntfyAuthToken: ntfyAuthToken || null });
-    }
-  };
-
-  const handleClearNtfyAuthToken = () => {
-    setNtfyAuthToken('');
-    updateSettings.mutate({ ntfyAuthToken: null });
   };
 
   const handleWebhookFormatChange = (value: string) => {
     setWebhookFormat(value);
     updateSettings.mutate({ webhookFormat: value as 'json' | 'ntfy' | 'apprise' });
-  };
-
-  const handleTestDiscord = async () => {
-    setTestingDiscord(true);
-    try {
-      await api.settings.testWebhook({ type: 'discord' });
-      toast.success('Test Sent', {
-        description: 'Check your Discord channel for the test message.',
-      });
-    } catch (err) {
-      toast.error('Test Failed', {
-        description: err instanceof Error ? err.message : 'Failed to send test webhook',
-      });
-    } finally {
-      setTestingDiscord(false);
-    }
-  };
-
-  const handleTestCustom = async () => {
-    setTestingCustom(true);
-    try {
-      await api.settings.testWebhook({
-        type: 'custom',
-        format: webhookFormat as 'json' | 'ntfy' | 'apprise',
-        ntfyTopic: ntfyTopic || undefined,
-        // Pass auth token if user entered a new one (not empty and not the placeholder)
-        ntfyAuthToken: ntfyAuthToken && ntfyAuthToken !== '********' ? ntfyAuthToken : undefined,
-      });
-      toast.success('Test Sent', {
-        description: 'Check your webhook endpoint for the test message.',
-      });
-    } catch (err) {
-      toast.error('Test Failed', {
-        description: err instanceof Error ? err.message : 'Failed to send test webhook',
-      });
-    } finally {
-      setTestingCustom(false);
-    }
   };
 
   if (isLoading) {
@@ -805,7 +719,9 @@ function NotificationSettings() {
             <Bell className="h-5 w-5" />
             Notification Routing
           </CardTitle>
-          <CardDescription>Configure which channels receive each notification type</CardDescription>
+          <CardDescription>
+            Configure which channels receive each notification type
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <NotificationRoutingMatrix
@@ -818,59 +734,39 @@ function NotificationSettings() {
       <Card>
         <CardHeader>
           <CardTitle>Webhook Configuration</CardTitle>
-          <CardDescription>Configure webhook URLs for notifications</CardDescription>
+          <CardDescription>
+            Configure webhook URLs for notifications
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="discordWebhook">Discord Webhook URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="discordWebhook"
-                placeholder="https://discord.com/api/webhooks/..."
-                defaultValue={settings?.discordWebhookUrl ?? ''}
-                onBlur={(e) => {
-                  handleUrlChange('discordWebhookUrl', e.target.value);
-                }}
-              />
-              <Button
-                variant="outline"
-                onClick={handleTestDiscord}
-                disabled={!settings?.discordWebhookUrl || testingDiscord}
-              >
-                {testingDiscord ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test'}
-              </Button>
-            </div>
-            <p className="text-muted-foreground text-xs">
+            <Input
+              id="discordWebhook"
+              placeholder="https://discord.com/api/webhooks/..."
+              defaultValue={settings?.discordWebhookUrl ?? ''}
+              onBlur={(e) => { handleUrlChange('discordWebhookUrl', e.target.value); }}
+            />
+            <p className="text-xs text-muted-foreground">
               Paste your Discord webhook URL to receive notifications in a Discord channel
             </p>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="customWebhook">Custom Webhook URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="customWebhook"
-                placeholder={
-                  webhookFormat === 'ntfy'
-                    ? 'https://ntfy.sh/ (or your self-hosted ntfy server)'
-                    : webhookFormat === 'apprise'
-                      ? 'http://apprise:8000/notify/myconfig'
-                      : 'https://your-service.com/webhook'
-                }
-                defaultValue={settings?.customWebhookUrl ?? ''}
-                onBlur={(e) => {
-                  handleUrlChange('customWebhookUrl', e.target.value);
-                }}
-              />
-              <Button
-                variant="outline"
-                onClick={handleTestCustom}
-                disabled={!settings?.customWebhookUrl || testingCustom}
-              >
-                {testingCustom ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test'}
-              </Button>
-            </div>
-            <p className="text-muted-foreground text-xs">
+            <Input
+              id="customWebhook"
+              placeholder={
+                webhookFormat === 'ntfy'
+                  ? 'https://ntfy.sh/ (or your self-hosted ntfy server)'
+                  : webhookFormat === 'apprise'
+                    ? 'http://apprise:8000/notify/myconfig'
+                    : 'https://your-service.com/webhook'
+              }
+              defaultValue={settings?.customWebhookUrl ?? ''}
+              onBlur={(e) => { handleUrlChange('customWebhookUrl', e.target.value); }}
+            />
+            <p className="text-xs text-muted-foreground">
               {webhookFormat === 'ntfy'
                 ? 'Post to your ntfy server root URL (topic is specified separately below)'
                 : webhookFormat === 'apprise'
@@ -891,55 +787,25 @@ function NotificationSettings() {
                 <SelectItem value="apprise">Apprise</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Choose the payload format for your webhook endpoint
             </p>
           </div>
 
           {webhookFormat === 'ntfy' && (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="ntfyTopic">Ntfy Topic</Label>
-                <Input
-                  id="ntfyTopic"
-                  placeholder="tracearr"
-                  value={ntfyTopic}
-                  onChange={(e) => setNtfyTopic(e.target.value)}
-                  onBlur={(e) => {
-                    handleUrlChange('ntfyTopic', e.target.value);
-                  }}
-                />
-                <p className="text-muted-foreground text-xs">
-                  The ntfy topic to publish notifications to
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="ntfyAuthToken">Auth Token (optional)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="ntfyAuthToken"
-                    type="password"
-                    placeholder={settings?.ntfyAuthToken ? '••••••••' : 'tk_...'}
-                    value={ntfyAuthToken}
-                    onChange={(e) => setNtfyAuthToken(e.target.value)}
-                    onBlur={handleNtfyAuthTokenSave}
-                  />
-                  {settings?.ntfyAuthToken && (
-                    <Button
-                      variant="outline"
-                      onClick={handleClearNtfyAuthToken}
-                      title="Clear auth token"
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-                <p className="text-muted-foreground text-xs">
-                  Required for protected ntfy servers. Enter your access token (starts with tk_).
-                </p>
-              </div>
-            </>
+            <div className="space-y-2">
+              <Label htmlFor="ntfyTopic">Ntfy Topic</Label>
+              <Input
+                id="ntfyTopic"
+                placeholder="tracearr"
+                value={ntfyTopic}
+                onChange={(e) => setNtfyTopic(e.target.value)}
+                onBlur={(e) => { handleUrlChange('ntfyTopic', e.target.value); }}
+              />
+              <p className="text-xs text-muted-foreground">
+                The ntfy topic to publish notifications to
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -949,23 +815,11 @@ function NotificationSettings() {
 
 function AccessSettings() {
   const { data: settings, isLoading } = useSettings();
-  const { data: serversData } = useServers();
-  const { user } = useAuth();
   const updateSettings = useUpdateSettings();
 
   const handleToggle = (key: keyof SettingsType, value: boolean) => {
     updateSettings.mutate({ [key]: value });
   };
-
-  // Only show auth method selector when applicable:
-  // - User has local credentials (hasPassword) OR
-  // - There's at least one Jellyfin server configured
-  // Handle both array and wrapped response formats
-  const servers = Array.isArray(serversData)
-    ? serversData
-    : ((serversData as unknown as { data?: Server[] })?.data ?? []);
-  const hasJellyfinServer = servers.some((s) => s.type === 'jellyfin');
-  const showAuthMethodSelector = user?.hasPassword || hasJellyfinServer;
 
   if (isLoading) {
     return (
@@ -987,59 +841,57 @@ function AccessSettings() {
           <Shield className="h-5 w-5" />
           Access Control
         </CardTitle>
-        <CardDescription>Configure who can access Tracearr</CardDescription>
+        <CardDescription>
+          Configure who can access Tracearr
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <Label className="text-base">Allow Guest Access</Label>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               When disabled, only the server owner can log in to Tracearr
             </p>
           </div>
           <Switch
             checked={settings?.allowGuestAccess ?? false}
-            onCheckedChange={(checked) => {
-              handleToggle('allowGuestAccess', checked);
-            }}
+            onCheckedChange={(checked) => { handleToggle('allowGuestAccess', checked); }}
           />
         </div>
 
-        {showAuthMethodSelector && (
-          <div className="space-y-2">
-            <Label className="text-base">Primary Authentication Method</Label>
-            <p className="text-muted-foreground text-sm">
-              Choose which authentication method is shown by default on the login page
-            </p>
-            <Select
-              value={settings?.primaryAuthMethod ?? 'local'}
-              onValueChange={(value: 'jellyfin' | 'local') => {
-                updateSettings.mutate({ primaryAuthMethod: value });
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="local">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="h-4 w-4" />
-                    <span>Local Account</span>
-                  </div>
-                </SelectItem>
-                <SelectItem value="jellyfin">
-                  <div className="flex items-center gap-2">
-                    <MediaServerIcon type="jellyfin" className="h-4 w-4" />
-                    <span>Jellyfin Admin</span>
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label className="text-base">Primary Authentication Method</Label>
+          <p className="text-sm text-muted-foreground">
+            Choose which authentication method is shown by default on the login page
+          </p>
+          <Select
+            value={settings?.primaryAuthMethod ?? 'local'}
+            onValueChange={(value: 'jellyfin' | 'local') => {
+              updateSettings.mutate({ primaryAuthMethod: value });
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="local">
+                <div className="flex items-center gap-2">
+                  <KeyRound className="h-4 w-4" />
+                  <span>Local Account</span>
+                </div>
+              </SelectItem>
+              <SelectItem value="jellyfin">
+                <div className="flex items-center gap-2">
+                  <MediaServerIcon type="jellyfin" className="h-4 w-4" />
+                  <span>Jellyfin Admin</span>
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
-        <div className="bg-muted/50 rounded-lg p-4">
-          <p className="text-muted-foreground text-sm">
+        <div className="rounded-lg bg-muted/50 p-4">
+          <p className="text-sm text-muted-foreground">
             <strong>Note:</strong> In v1, Tracearr only supports single-owner access. Even with
             guest access enabled, guests can only view their own sessions and violations.
           </p>
@@ -1127,27 +979,25 @@ function NetworkSettings() {
                 Detect
               </Button>
             </div>
-            <p className="text-muted-foreground text-xs">
-              The URL that external devices should use to reach this server. Used for QR codes and
-              mobile app pairing.
+            <p className="text-xs text-muted-foreground">
+              The URL that external devices should use to reach this server. Used for QR codes and mobile app pairing.
             </p>
             {isLocalhost && (
               <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 p-3 text-sm text-yellow-600">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
-                  Localhost URLs only work when your phone is on the same machine. Use your local IP
-                  (e.g., http://192.168.1.x:3000) for LAN access, or set up a domain for remote
-                  access.
+                  Localhost URLs only work when your phone is on the same machine.
+                  Use your local IP (e.g., http://192.168.1.x:3000) for LAN access,
+                  or set up a domain for remote access.
                 </span>
               </div>
             )}
             {isHttp && (
               <div className="flex items-start gap-2 rounded-lg bg-yellow-500/10 p-3 text-sm text-yellow-600">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
-                  iOS requires HTTPS for non-local connections. HTTP will work on local networks but
-                  may fail for Tailscale or remote access. Consider using HTTPS with a reverse
-                  proxy.
+                  iOS requires HTTPS for non-local connections. HTTP will work on local networks
+                  but may fail for Tailscale or remote access. Consider using HTTPS with a reverse proxy.
                 </span>
               </div>
             )}
@@ -1162,9 +1012,9 @@ function NetworkSettings() {
               onChange={(e) => setBasePath(e.target.value)}
               onBlur={handleSaveBasePath}
             />
-            <p className="text-muted-foreground text-xs">
-              Only needed if running behind a reverse proxy with a path prefix (e.g.,
-              example.com/tracearr). Leave empty for root-level deployments.
+            <p className="text-xs text-muted-foreground">
+              Only needed if running behind a reverse proxy with a path prefix (e.g., example.com/tracearr).
+              Leave empty for root-level deployments.
             </p>
           </div>
         </CardContent>
@@ -1181,7 +1031,7 @@ function NetworkSettings() {
           <div className="flex items-center justify-between">
             <div>
               <Label className="text-base">Trust Proxy Headers</Label>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Trust X-Forwarded-For and X-Forwarded-Proto headers from your reverse proxy
               </p>
             </div>
@@ -1191,11 +1041,11 @@ function NetworkSettings() {
             />
           </div>
 
-          <div className="bg-muted/50 space-y-2 rounded-lg p-4">
-            <p className="text-muted-foreground text-sm">
+          <div className="rounded-lg bg-muted/50 p-4 space-y-2">
+            <p className="text-sm text-muted-foreground">
               <strong>When to enable:</strong> If you're running Tracearr behind a reverse proxy
-              (nginx, Caddy, Traefik, Cloudflare Tunnel), enable this so the server knows the real
-              client IP and protocol.
+              (nginx, Caddy, Traefik, Cloudflare Tunnel), enable this so the server knows the
+              real client IP and protocol.
             </p>
             {settings?.trustProxy && (
               <p className="text-sm text-yellow-600">
@@ -1214,48 +1064,38 @@ function NetworkSettings() {
         <CardContent>
           <div className="space-y-3 text-sm">
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
               <div>
                 <strong>Local network (LAN)</strong>
-                <p className="text-muted-foreground">
-                  http://192.168.1.x:3000 - Works on iOS with local network permissions
-                </p>
+                <p className="text-muted-foreground">http://192.168.1.x:3000 - Works on iOS with local network permissions</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
               <div>
                 <strong>Reverse proxy with HTTPS</strong>
-                <p className="text-muted-foreground">
-                  https://tracearr.example.com - Full support, recommended for remote access
-                </p>
+                <p className="text-muted-foreground">https://tracearr.example.com - Full support, recommended for remote access</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
               <div>
                 <strong>Cloudflare Tunnel</strong>
-                <p className="text-muted-foreground">
-                  https://tracearr.example.com - Full support, no port forwarding needed
-                </p>
+                <p className="text-muted-foreground">https://tracearr.example.com - Full support, no port forwarding needed</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-600" />
+              <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
               <div>
                 <strong>Tailscale (HTTP)</strong>
-                <p className="text-muted-foreground">
-                  http://device.tailnet.ts.net - May require HTTPS for iOS
-                </p>
+                <p className="text-muted-foreground">http://device.tailnet.ts.net - May require HTTPS for iOS</p>
               </div>
             </div>
             <div className="flex gap-3">
-              <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <XCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
               <div>
                 <strong>Self-signed certificates</strong>
-                <p className="text-muted-foreground">
-                  https://192.168.1.x - iOS rejects self-signed certs by default
-                </p>
+                <p className="text-muted-foreground">https://192.168.1.x - iOS rejects self-signed certs by default</p>
               </div>
             </div>
           </div>
@@ -1387,12 +1227,12 @@ function MobileSettings() {
         <CardContent className="space-y-6">
           {!config?.isEnabled ? (
             <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8">
-              <div className="bg-muted rounded-full p-4">
-                <Smartphone className="text-muted-foreground h-8 w-8" />
+              <div className="rounded-full bg-muted p-4">
+                <Smartphone className="h-8 w-8 text-muted-foreground" />
               </div>
               <div className="text-center">
                 <h3 className="font-semibold">Mobile Access Disabled</h3>
-                <p className="text-muted-foreground mt-1 text-sm">
+                <p className="text-sm text-muted-foreground mt-1">
                   Enable mobile access to connect the Tracearr app to your server
                 </p>
               </div>
@@ -1411,7 +1251,7 @@ function MobileSettings() {
             <>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground">
                     {deviceCount} of {maxDevices} devices connected
                   </p>
                 </div>
@@ -1429,7 +1269,10 @@ function MobileSettings() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setShowDisableConfirm(true)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDisableConfirm(true)}
+                >
                   Disable Mobile Access
                 </Button>
               </div>
@@ -1448,7 +1291,11 @@ function MobileSettings() {
                   {config.sessions.length} device{config.sessions.length !== 1 ? 's' : ''} connected
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => setShowRevokeConfirm(true)}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRevokeConfirm(true)}
+              >
                 <LogOut className="mr-2 h-4 w-4" />
                 Revoke All
               </Button>
@@ -1465,13 +1312,10 @@ function MobileSettings() {
       )}
 
       {/* QR Code Dialog */}
-      <Dialog
-        open={showQRDialog}
-        onOpenChange={(open) => {
-          setShowQRDialog(open);
-          if (!open) setPairToken(null);
-        }}
-      >
+      <Dialog open={showQRDialog} onOpenChange={(open) => {
+        setShowQRDialog(open);
+        if (!open) setPairToken(null);
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Pair New Device</DialogTitle>
@@ -1484,10 +1328,15 @@ function MobileSettings() {
               <>
                 <div className="flex flex-col items-center gap-4">
                   <div className="rounded-lg border bg-white p-4">
-                    <QRCodeSVG value={getQRData()} size={200} level="M" marginSize={0} />
+                    <QRCodeSVG
+                      value={getQRData()}
+                      size={200}
+                      level="M"
+                      marginSize={0}
+                    />
                   </div>
                   {timeLeft !== null && (
-                    <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
                       <span>Expires in {formatTimeLeft(timeLeft)}</span>
                     </div>
@@ -1497,7 +1346,11 @@ function MobileSettings() {
                 <div className="space-y-2">
                   <Label>One-Time Pair Token</Label>
                   <div className="flex gap-2">
-                    <Input readOnly value={pairToken.token} className="font-mono text-xs" />
+                    <Input
+                      readOnly
+                      value={pairToken.token}
+                      className="font-mono text-xs"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
@@ -1511,7 +1364,7 @@ function MobileSettings() {
                       )}
                     </Button>
                   </div>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     This token expires in 5 minutes and can only be used once.
                   </p>
                 </div>
@@ -1519,12 +1372,10 @@ function MobileSettings() {
             )}
           </div>
           <DialogFooter>
-            <Button
-              onClick={() => {
-                setShowQRDialog(false);
-                setPairToken(null);
-              }}
-            >
+            <Button onClick={() => {
+              setShowQRDialog(false);
+              setPairToken(null);
+            }}>
               Done
             </Button>
           </DialogFooter>
@@ -1569,26 +1420,30 @@ function MobileSessionCard({ session }: { session: MobileSession }) {
     <>
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div className="flex items-center gap-4">
-          <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
             <Smartphone className="h-5 w-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{session.deviceName}</h3>
-              <span className="bg-muted rounded px-2 py-0.5 text-xs capitalize">
+              <span className="rounded bg-muted px-2 py-0.5 text-xs capitalize">
                 {session.platform}
               </span>
             </div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               Last seen {formatDistanceToNow(new Date(session.lastSeenAt), { addSuffix: true })}
             </p>
-            <p className="text-muted-foreground text-xs">
+            <p className="text-xs text-muted-foreground">
               Connected {format(new Date(session.createdAt), 'MMM d, yyyy')}
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(true)}>
-          <Trash2 className="text-destructive h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowDeleteConfirm(true)}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
 
@@ -1614,24 +1469,33 @@ function ImportSettings() {
   const updateSettings = useUpdateSettings();
   const { socket } = useSocket();
 
+  // Tautulli state
   const [tautulliUrl, setTautulliUrl] = useState('');
   const [tautulliApiKey, setTautulliApiKey] = useState('');
-  const [selectedServerId, setSelectedServerId] = useState<string>('');
-  const [connectionStatus, setConnectionStatus] = useState<
-    'idle' | 'testing' | 'success' | 'error'
-  >('idle');
+  const [selectedPlexServerId, setSelectedPlexServerId] = useState<string>('');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
-  const [importProgress, setImportProgress] = useState<TautulliImportProgress | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
-  const [_activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [tautulliProgress, setTautulliProgress] = useState<TautulliImportProgress | null>(null);
+  const [isTautulliImporting, setIsTautulliImporting] = useState(false);
+  const [_tautulliActiveJobId, setTautulliActiveJobId] = useState<string | null>(null);
+
+  // Jellystat state
+  const [selectedJellyfinServerId, setSelectedJellyfinServerId] = useState<string>('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [enrichMedia, setEnrichMedia] = useState(true);
+  const [jellystatProgress, setJellystatProgress] = useState<JellystatImportProgress | null>(null);
+  const [isJellystatImporting, setIsJellystatImporting] = useState(false);
+  const [_jellystatActiveJobId, setJellystatActiveJobId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle both array and wrapped response formats
   const servers = Array.isArray(serversData)
     ? serversData
-    : ((serversData as unknown as { data?: Server[] })?.data ?? []);
+    : (serversData as unknown as { data?: Server[] })?.data ?? [];
 
-  // Only show Plex servers (Tautulli is Plex-only)
+  // Split servers by type
   const plexServers = servers.filter((s) => s.type === 'plex');
+  const jellyfinEmbyServers = servers.filter((s) => s.type === 'jellyfin' || s.type === 'emby');
 
   // Initialize form with saved settings
   useEffect(() => {
@@ -1645,7 +1509,7 @@ function ImportSettings() {
     }
   }, [settings]);
 
-  // Check for active import on mount for each Plex server
+  // Check for active Tautulli import on mount
   useEffect(() => {
     if (plexServers.length === 0) return;
 
@@ -1654,60 +1518,110 @@ function ImportSettings() {
         try {
           const result = await api.import.tautulli.getActive(server.id);
           if (result.active && result.jobId) {
-            setSelectedServerId(server.id);
-            setActiveJobId(result.jobId);
-            setIsImporting(true);
+            setSelectedPlexServerId(server.id);
+            setTautulliActiveJobId(result.jobId);
+            setIsTautulliImporting(true);
 
-            // BullMQ stores progress as percentage (0-100)
-            // We'll get detailed progress from WebSocket events
             const progressPercent = typeof result.progress === 'number' ? result.progress : 0;
-            setImportProgress({
+            setTautulliProgress({
               status: 'processing',
-              totalRecords: 0, // Unknown until WebSocket update
-              fetchedRecords: 0,
+              totalRecords: 0,
               processedRecords: 0,
               importedRecords: 0,
-              updatedRecords: 0,
               skippedRecords: 0,
-              duplicateRecords: 0,
-              unknownUserRecords: 0,
-              activeSessionRecords: 0,
               errorRecords: 0,
               currentPage: 0,
               totalPages: 0,
-              message:
-                progressPercent > 0
-                  ? `Import in progress (${progressPercent}% complete)... Waiting for detailed progress.`
-                  : 'Import in progress... Waiting for progress update.',
+              message: progressPercent > 0
+                ? `Import in progress (${progressPercent}% complete)... Waiting for detailed progress.`
+                : 'Import in progress... Waiting for progress update.',
             });
-            // Mark connection as success since we have an active import
             setConnectionStatus('success');
             break;
           }
         } catch {
-          // Ignore errors - server might not have queue available
+          // Ignore errors
         }
       }
     };
 
     void checkActiveImports();
-  }, [plexServers.length]); // Only re-run when server count changes
+  }, [plexServers.length]);
 
-  // Listen for import progress via WebSocket
+  // Check for active Jellystat import on mount
   useEffect(() => {
-    if (!socket) return;
+    if (jellyfinEmbyServers.length === 0) return;
 
-    const handleProgress = (progress: TautulliImportProgress) => {
-      setImportProgress(progress);
-      if (progress.status === 'complete' || progress.status === 'error') {
-        setIsImporting(false);
-        setActiveJobId(null);
+    const checkActiveJellystatImports = async () => {
+      for (const server of jellyfinEmbyServers) {
+        try {
+          const result = await api.import.jellystat.getActive(server.id);
+          if (result.active && result.jobId) {
+            setSelectedJellyfinServerId(server.id);
+            setJellystatActiveJobId(result.jobId);
+            setIsJellystatImporting(true);
+
+            const progressPercent = typeof result.progress === 'number' ? result.progress : 0;
+            setJellystatProgress({
+              status: 'processing',
+              totalRecords: 0,
+              processedRecords: 0,
+              importedRecords: 0,
+              skippedRecords: 0,
+              errorRecords: 0,
+              enrichedRecords: 0,
+              message: progressPercent > 0
+                ? `Import in progress (${progressPercent}% complete)... Waiting for detailed progress.`
+                : 'Import in progress... Waiting for progress update.',
+            });
+            break;
+          }
+        } catch {
+          // Ignore errors
+        }
       }
     };
 
-    socket.on('import:progress', handleProgress);
+    void checkActiveJellystatImports();
+  }, [jellyfinEmbyServers.length]);
+
+  // Listen for Tautulli import progress via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleTautulliProgress = (progress: TautulliImportProgress) => {
+      setTautulliProgress(progress);
+      if (progress.status === 'complete' || progress.status === 'error') {
+        setIsTautulliImporting(false);
+        setTautulliActiveJobId(null);
+      }
+    };
+
+    socket.on('import:progress', handleTautulliProgress);
     return () => {
-      socket.off('import:progress', handleProgress);
+      socket.off('import:progress', handleTautulliProgress);
+    };
+  }, [socket]);
+
+  // Listen for Jellystat import progress via WebSocket
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleJellystatProgress = (progress: JellystatImportProgress) => {
+      setJellystatProgress(progress);
+      if (progress.status === 'complete' || progress.status === 'error') {
+        setIsJellystatImporting(false);
+        setJellystatActiveJobId(null);
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+
+    socket.on('import:jellystat:progress', handleJellystatProgress);
+    return () => {
+      socket.off('import:jellystat:progress', handleJellystatProgress);
     };
   }, [socket]);
 
@@ -1735,7 +1649,6 @@ function ImportSettings() {
         setConnectionMessage(
           `Connected! Found ${result.users ?? 0} users and ${result.historyRecords ?? 0} history records.`
         );
-        // Save settings on successful connection
         handleSaveSettings();
       } else {
         setConnectionStatus('error');
@@ -1747,23 +1660,16 @@ function ImportSettings() {
     }
   };
 
-  const handleStartImport = async () => {
-    if (!selectedServerId) {
-      return;
-    }
+  const handleStartTautulliImport = async () => {
+    if (!selectedPlexServerId) return;
 
-    setIsImporting(true);
-    setImportProgress({
+    setIsTautulliImporting(true);
+    setTautulliProgress({
       status: 'fetching',
       totalRecords: 0,
-      fetchedRecords: 0,
       processedRecords: 0,
       importedRecords: 0,
-      updatedRecords: 0,
       skippedRecords: 0,
-      duplicateRecords: 0,
-      unknownUserRecords: 0,
-      activeSessionRecords: 0,
       errorRecords: 0,
       currentPage: 0,
       totalPages: 0,
@@ -1771,29 +1677,80 @@ function ImportSettings() {
     });
 
     try {
-      const result = await api.import.tautulli.start(selectedServerId);
-      // Save jobId if returned (when using queue)
+      const result = await api.import.tautulli.start(selectedPlexServerId);
       if (result.jobId) {
-        setActiveJobId(result.jobId);
+        setTautulliActiveJobId(result.jobId);
       }
-      // Progress updates come via WebSocket
     } catch (err) {
-      setIsImporting(false);
-      setActiveJobId(null);
-      setImportProgress({
+      setIsTautulliImporting(false);
+      setTautulliActiveJobId(null);
+      setTautulliProgress({
         status: 'error',
         totalRecords: 0,
-        fetchedRecords: 0,
         processedRecords: 0,
         importedRecords: 0,
-        updatedRecords: 0,
         skippedRecords: 0,
-        duplicateRecords: 0,
-        unknownUserRecords: 0,
-        activeSessionRecords: 0,
         errorRecords: 0,
         currentPage: 0,
         totalPages: 0,
+        message: err instanceof Error ? err.message : 'Import failed',
+      });
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.name.endsWith('.json')) {
+        setJellystatProgress({
+          status: 'error',
+          totalRecords: 0,
+          processedRecords: 0,
+          importedRecords: 0,
+          skippedRecords: 0,
+          errorRecords: 0,
+          enrichedRecords: 0,
+          message: 'Please select a JSON file',
+        });
+        return;
+      }
+      setSelectedFile(file);
+      setJellystatProgress(null);
+    }
+  };
+
+  const handleStartJellystatImport = async () => {
+    if (!selectedJellyfinServerId || !selectedFile) return;
+
+    setIsJellystatImporting(true);
+    setJellystatProgress({
+      status: 'processing',
+      totalRecords: 0,
+      processedRecords: 0,
+      importedRecords: 0,
+      skippedRecords: 0,
+      errorRecords: 0,
+      enrichedRecords: 0,
+      message: 'Uploading backup file...',
+    });
+
+    try {
+      const result = await api.import.jellystat.start(selectedJellyfinServerId, selectedFile, enrichMedia);
+      if (result.jobId) {
+        setJellystatActiveJobId(result.jobId);
+      }
+    } catch (err) {
+      setIsJellystatImporting(false);
+      setJellystatActiveJobId(null);
+      setJellystatProgress({
+        status: 'error',
+        totalRecords: 0,
+        processedRecords: 0,
+        importedRecords: 0,
+        skippedRecords: 0,
+        errorRecords: 0,
+        enrichedRecords: 0,
         message: err instanceof Error ? err.message : 'Import failed',
       });
     }
@@ -1814,121 +1771,123 @@ function ImportSettings() {
     );
   }
 
+  const hasPlexServers = plexServers.length > 0;
+  const hasJellyfinEmbyServers = jellyfinEmbyServers.length > 0;
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Tautulli Import
-          </CardTitle>
-          <CardDescription>
-            Import historical watch data from Tautulli into Tracearr
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tautulliUrl">Tautulli URL</Label>
-              <Input
-                id="tautulliUrl"
-                placeholder="http://localhost:8181"
-                value={tautulliUrl}
-                onChange={(e) => {
-                  setTautulliUrl(e.target.value);
-                }}
-              />
-              <p className="text-muted-foreground text-xs">
-                The URL where Tautulli is accessible (include port if needed)
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="tautulliApiKey">API Key</Label>
-              <Input
-                id="tautulliApiKey"
-                type="password"
-                placeholder="Your Tautulli API key"
-                value={tautulliApiKey}
-                onChange={(e) => {
-                  setTautulliApiKey(e.target.value);
-                }}
-              />
-              <p className="text-muted-foreground text-xs">
-                Find this in Tautulli Settings → Web Interface → API Key
-              </p>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <Button
-                onClick={handleTestConnection}
-                disabled={connectionStatus === 'testing' || !tautulliUrl || !tautulliApiKey}
-              >
-                {connectionStatus === 'testing' ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Testing...
-                  </>
-                ) : (
-                  'Test Connection'
-                )}
-              </Button>
-
-              {connectionStatus === 'success' && (
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {connectionMessage}
+      {/* Tautulli Import - Only shown if there are Plex servers */}
+      {hasPlexServers && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Download className="h-5 w-5" />
+                Tautulli Import (Plex)
+              </CardTitle>
+              <CardDescription>
+                Import historical watch data from Tautulli into Tracearr for your Plex servers
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="tautulliUrl">Tautulli URL</Label>
+                  <Input
+                    id="tautulliUrl"
+                    placeholder="http://localhost:8181"
+                    value={tautulliUrl}
+                    onChange={(e) => { setTautulliUrl(e.target.value); }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    The URL where Tautulli is accessible (include port if needed)
+                  </p>
                 </div>
-              )}
 
-              {connectionStatus === 'error' && (
-                <div className="text-destructive flex items-center gap-2 text-sm">
-                  <XCircle className="h-4 w-4" />
-                  {connectionMessage}
+                <div className="space-y-2">
+                  <Label htmlFor="tautulliApiKey">API Key</Label>
+                  <Input
+                    id="tautulliApiKey"
+                    type="password"
+                    placeholder="Your Tautulli API key"
+                    value={tautulliApiKey}
+                    onChange={(e) => { setTautulliApiKey(e.target.value); }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Find this in Tautulli Settings → Web Interface → API Key
+                  </p>
                 </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {connectionStatus === 'success' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Import History</CardTitle>
-            <CardDescription>Select a Plex server to import Tautulli history into</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {plexServers.length === 0 ? (
-              <div className="bg-muted/50 rounded-lg p-4">
-                <p className="text-muted-foreground text-sm">
-                  No Plex servers connected. Add a Plex server first to import Tautulli data.
-                </p>
+                <div className="flex items-center gap-4">
+                  <Button
+                    onClick={handleTestConnection}
+                    disabled={connectionStatus === 'testing' || !tautulliUrl || !tautulliApiKey}
+                  >
+                    {connectionStatus === 'testing' ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Testing...
+                      </>
+                    ) : (
+                      'Test Connection'
+                    )}
+                  </Button>
+
+                  {connectionStatus === 'success' && (
+                    <div className="flex items-center gap-2 text-sm text-green-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {connectionMessage}
+                    </div>
+                  )}
+
+                  {connectionStatus === 'error' && (
+                    <div className="flex items-center gap-2 text-sm text-destructive">
+                      <XCircle className="h-4 w-4" />
+                      {connectionMessage}
+                    </div>
+                  )}
+                </div>
               </div>
-            ) : (
-              <>
+            </CardContent>
+          </Card>
+
+          {connectionStatus === 'success' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Import Tautulli History</CardTitle>
+                <CardDescription>
+                  Select a Plex server to import Tautulli history into
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
                 <div className="space-y-2">
                   <Label>Target Server</Label>
-                  <Select value={selectedServerId} onValueChange={setSelectedServerId}>
+                  <Select value={selectedPlexServerId} onValueChange={setSelectedPlexServerId}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a Plex server" />
                     </SelectTrigger>
                     <SelectContent>
                       {plexServers.map((server) => (
                         <SelectItem key={server.id} value={server.id}>
-                          {server.name}
+                          <div className="flex items-center gap-2">
+                            <MediaServerIcon type="plex" className="h-4 w-4" />
+                            {server.name}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     Sessions will be imported and matched to users from this server
                   </p>
                 </div>
 
                 <div className="space-y-4">
-                  <Button onClick={handleStartImport} disabled={!selectedServerId || isImporting}>
-                    {isImporting ? (
+                  <Button
+                    onClick={handleStartTautulliImport}
+                    disabled={!selectedPlexServerId || isTautulliImporting}
+                  >
+                    {isTautulliImporting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Importing...
@@ -1941,40 +1900,36 @@ function ImportSettings() {
                     )}
                   </Button>
 
-                  {importProgress && (
+                  {tautulliProgress && (
                     <div className="space-y-3 rounded-lg border p-4">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">
-                          {importProgress.status === 'complete'
-                            ? 'Import Complete'
-                            : importProgress.status === 'error'
-                              ? 'Import Failed'
-                              : 'Importing...'}
+                          {tautulliProgress.status === 'complete' ? 'Import Complete' :
+                           tautulliProgress.status === 'error' ? 'Import Failed' :
+                           'Importing...'}
                         </span>
-                        {importProgress.status === 'complete' && (
+                        {tautulliProgress.status === 'complete' && (
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         )}
-                        {importProgress.status === 'error' && (
-                          <XCircle className="text-destructive h-5 w-5" />
+                        {tautulliProgress.status === 'error' && (
+                          <XCircle className="h-5 w-5 text-destructive" />
                         )}
-                        {(importProgress.status === 'fetching' ||
-                          importProgress.status === 'processing') && (
-                          <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
+                        {(tautulliProgress.status === 'fetching' || tautulliProgress.status === 'processing') && (
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         )}
                       </div>
 
-                      <p className="text-muted-foreground text-sm">{importProgress.message}</p>
+                      <p className="text-sm text-muted-foreground">{tautulliProgress.message}</p>
 
-                      {importProgress.totalRecords > 0 && (
+                      {tautulliProgress.totalRecords > 0 && (
                         <>
-                          <div className="bg-muted h-2 w-full overflow-hidden rounded-full">
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                             <div
-                              className="bg-primary h-full transition-all"
+                              className="h-full bg-primary transition-all"
                               style={{
-                                width:
-                                  importProgress.status === 'complete'
-                                    ? '100%'
-                                    : `${Math.min(100, Math.round((importProgress.processedRecords / importProgress.totalRecords) * 100))}%`,
+                                width: tautulliProgress.status === 'complete'
+                                  ? '100%'
+                                  : `${Math.min(100, Math.round((tautulliProgress.processedRecords / tautulliProgress.totalRecords) * 100))}%`,
                               }}
                             />
                           </div>
@@ -1983,32 +1938,32 @@ function ImportSettings() {
                             <div>
                               <span className="text-muted-foreground">Processed:</span>{' '}
                               <span className="font-medium">
-                                {importProgress.processedRecords} / {importProgress.totalRecords}
+                                {tautulliProgress.processedRecords} / {tautulliProgress.totalRecords}
                               </span>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Page:</span>{' '}
                               <span className="font-medium">
-                                {importProgress.currentPage} / {importProgress.totalPages}
+                                {tautulliProgress.currentPage} / {tautulliProgress.totalPages}
                               </span>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Imported:</span>{' '}
                               <span className="font-medium text-green-600">
-                                {importProgress.importedRecords}
+                                {tautulliProgress.importedRecords}
                               </span>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Skipped:</span>{' '}
                               <span className="font-medium text-yellow-600">
-                                {importProgress.skippedRecords}
+                                {tautulliProgress.skippedRecords}
                               </span>
                             </div>
-                            {importProgress.errorRecords > 0 && (
+                            {tautulliProgress.errorRecords > 0 && (
                               <div>
                                 <span className="text-muted-foreground">Errors:</span>{' '}
-                                <span className="text-destructive font-medium">
-                                  {importProgress.errorRecords}
+                                <span className="font-medium text-destructive">
+                                  {tautulliProgress.errorRecords}
                                 </span>
                               </div>
                             )}
@@ -2019,15 +1974,218 @@ function ImportSettings() {
                   )}
                 </div>
 
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-muted-foreground text-sm">
-                    <strong>Note:</strong> The import will match Tautulli users to existing Tracearr
-                    users by their Plex user ID. Duplicate sessions are automatically detected and
-                    skipped. This process may take several minutes depending on your history size.
+                <div className="rounded-lg bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Note:</strong> The import will match Tautulli users to existing Tracearr users
+                    by their Plex user ID. Duplicate sessions are automatically detected and skipped.
                   </p>
                 </div>
-              </>
-            )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
+      {/* Jellystat Import - Only shown if there are Jellyfin/Emby servers */}
+      {hasJellyfinEmbyServers && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileJson className="h-5 w-5" />
+              Jellystat Import (Jellyfin/Emby)
+            </CardTitle>
+            <CardDescription>
+              Import historical watch data from a Jellystat backup file into Tracearr
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Target Server</Label>
+                <Select value={selectedJellyfinServerId} onValueChange={setSelectedJellyfinServerId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a Jellyfin or Emby server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {jellyfinEmbyServers.map((server) => (
+                      <SelectItem key={server.id} value={server.id}>
+                        <div className="flex items-center gap-2">
+                          <MediaServerIcon type={server.type} className="h-4 w-4" />
+                          {server.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Sessions will be imported and matched to users from this server
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="jellystatFile">Jellystat Backup File</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="jellystatFile"
+                    type="file"
+                    accept=".json"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    className="cursor-pointer"
+                  />
+                </div>
+                {selectedFile && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Export your backup from Jellystat Settings → Backup → Full Backup
+                </p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="enrichMedia"
+                  checked={enrichMedia}
+                  onCheckedChange={(checked: boolean | 'indeterminate') => setEnrichMedia(checked === true)}
+                />
+                <Label htmlFor="enrichMedia" className="text-sm font-normal cursor-pointer">
+                  Enrich with media metadata (recommended)
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2 ml-6">
+                Fetches additional details like season/episode numbers and artwork from your media server.
+                This may slow down the import but provides better data quality.
+              </p>
+
+              <div className="space-y-4">
+                <Button
+                  onClick={handleStartJellystatImport}
+                  disabled={!selectedJellyfinServerId || !selectedFile || isJellystatImporting}
+                >
+                  {isJellystatImporting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Importing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Start Import
+                    </>
+                  )}
+                </Button>
+
+                {jellystatProgress && (
+                  <div className="space-y-3 rounded-lg border p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {jellystatProgress.status === 'complete' ? 'Import Complete' :
+                         jellystatProgress.status === 'error' ? 'Import Failed' :
+                         'Importing...'}
+                      </span>
+                      {jellystatProgress.status === 'complete' && (
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      )}
+                      {jellystatProgress.status === 'error' && (
+                        <XCircle className="h-5 w-5 text-destructive" />
+                      )}
+                      {jellystatProgress.status === 'processing' && (
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+
+                    <p className="text-sm text-muted-foreground">{jellystatProgress.message}</p>
+
+                    {jellystatProgress.totalRecords > 0 && (
+                      <>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{
+                              width: jellystatProgress.status === 'complete'
+                                ? '100%'
+                                : `${Math.min(100, Math.round((jellystatProgress.processedRecords / jellystatProgress.totalRecords) * 100))}%`,
+                            }}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Processed:</span>{' '}
+                            <span className="font-medium">
+                              {jellystatProgress.processedRecords} / {jellystatProgress.totalRecords}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Imported:</span>{' '}
+                            <span className="font-medium text-green-600">
+                              {jellystatProgress.importedRecords}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Skipped:</span>{' '}
+                            <span className="font-medium text-yellow-600">
+                              {jellystatProgress.skippedRecords}
+                            </span>
+                          </div>
+                          {jellystatProgress.enrichedRecords !== undefined && jellystatProgress.enrichedRecords > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Enriched:</span>{' '}
+                              <span className="font-medium text-blue-600">
+                                {jellystatProgress.enrichedRecords}
+                              </span>
+                            </div>
+                          )}
+                          {jellystatProgress.errorRecords > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Errors:</span>{' '}
+                              <span className="font-medium text-destructive">
+                                {jellystatProgress.errorRecords}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-lg bg-muted/50 p-4">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Note:</strong> The import will match Jellystat users to existing Tracearr users
+                  by their Jellyfin/Emby user ID. Duplicate sessions are automatically detected and skipped.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No servers message */}
+      {!hasPlexServers && !hasJellyfinEmbyServers && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Import History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-8">
+              <ServerIcon className="h-8 w-8 text-muted-foreground" />
+              <div className="text-center">
+                <p className="font-medium">No Servers Connected</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Add a media server first to import historical watch data.
+                </p>
+              </div>
+              <Button variant="outline" asChild>
+                <a href="/settings/servers">Add Server</a>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
