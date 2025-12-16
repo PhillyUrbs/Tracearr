@@ -698,7 +698,7 @@ export interface NotificationPreferencesWithStatus extends NotificationPreferenc
 }
 
 // Notification channel types
-export type NotificationChannel = 'discord' | 'webhook' | 'push';
+export type NotificationChannel = 'discord' | 'webhook' | 'push' | 'webToast';
 
 // Notification channel routing configuration (per-event type)
 export interface NotificationChannelRouting {
@@ -707,6 +707,7 @@ export interface NotificationChannelRouting {
   discordEnabled: boolean;
   webhookEnabled: boolean;
   pushEnabled: boolean;
+  webToastEnabled: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

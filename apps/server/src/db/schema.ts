@@ -407,6 +407,7 @@ export const notificationChannelRouting = pgTable(
     discordEnabled: boolean('discord_enabled').notNull().default(true),
     webhookEnabled: boolean('webhook_enabled').notNull().default(true),
     pushEnabled: boolean('push_enabled').notNull().default(true),
+    webToastEnabled: boolean('web_toast_enabled').notNull().default(true),
 
     // Timestamps
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

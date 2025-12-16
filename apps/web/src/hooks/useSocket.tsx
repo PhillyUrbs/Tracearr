@@ -5,6 +5,7 @@ import {
   useState,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import { io, type Socket } from 'socket.io-client';
@@ -15,11 +16,14 @@ import type {
   ActiveSession,
   ViolationWithDetails,
   DashboardStats,
+  NotificationChannelRouting,
+  NotificationEventType,
 } from '@tracearr/shared';
 import { WS_EVENTS } from '@tracearr/shared';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { tokenStorage } from '@/lib/api';
+import { useChannelRouting } from './queries';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -37,6 +41,26 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [socket, setSocket] = useState<TypedSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+
+  // Get channel routing for web toast preferences
+  const { data: routingData } = useChannelRouting();
+
+  // Build a ref to the routing map for access in event handlers
+  const routingMapRef = useRef<Map<NotificationEventType, NotificationChannelRouting>>(new Map());
+
+  // Update the ref when routing data changes
+  useEffect(() => {
+    const newMap = new Map<NotificationEventType, NotificationChannelRouting>();
+    routingData?.forEach((r) => newMap.set(r.eventType, r));
+    routingMapRef.current = newMap;
+  }, [routingData]);
+
+  // Helper to check if web toast is enabled for an event type
+  const isWebToastEnabled = useCallback((eventType: NotificationEventType): boolean => {
+    const routing = routingMapRef.current.get(eventType);
+    // Default to true if routing not yet loaded
+    return routing?.webToastEnabled ?? true;
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -89,9 +113,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ['stats', 'dashboard'] });
       void queryClient.invalidateQueries({ queryKey: ['sessions', 'list'] });
 
-      toast.info('New Stream Started', {
-        description: `${session.user.identityName ?? session.user.username} is watching ${session.mediaTitle}`,
-      });
+      // Show toast if web notifications are enabled for stream_started
+      if (isWebToastEnabled('stream_started')) {
+        toast.info('New Stream Started', {
+          description: `${session.user.identityName ?? session.user.username} is watching ${session.mediaTitle}`,
+        });
+      }
     });
 
     newSocket.on(WS_EVENTS.SESSION_STOPPED as 'session:stopped', (_sessionId: string) => {
@@ -112,11 +139,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       void queryClient.invalidateQueries({ queryKey: ['violations'] });
       void queryClient.invalidateQueries({ queryKey: ['stats', 'dashboard'] });
 
-      // Show toast notification based on severity
-      const toastFn = violation.severity === 'high' ? toast.error : toast.warning;
-      toastFn(`New Violation: ${violation.rule.name}`, {
-        description: `${violation.user.identityName ?? violation.user.username} triggered ${violation.rule.type}`,
-      });
+      // Show toast notification if web notifications are enabled for violation_detected
+      if (isWebToastEnabled('violation_detected')) {
+        const toastFn = violation.severity === 'high' ? toast.error : toast.warning;
+        toastFn(`New Violation: ${violation.rule.name}`, {
+          description: `${violation.user.identityName ?? violation.user.username} triggered ${violation.rule.type}`,
+        });
+      }
     });
 
     newSocket.on(WS_EVENTS.STATS_UPDATED as 'stats:updated', (_stats: DashboardStats) => {
@@ -129,7 +158,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     return () => {
       newSocket.disconnect();
     };
-  }, [isAuthenticated, queryClient]);
+  }, [isAuthenticated, queryClient, isWebToastEnabled]);
 
   const subscribeSessions = useCallback(() => {
     if (socket && isConnected) {

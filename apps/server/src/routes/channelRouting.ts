@@ -21,6 +21,7 @@ const updateRoutingSchema = z.object({
   discordEnabled: z.boolean().optional(),
   webhookEnabled: z.boolean().optional(),
   pushEnabled: z.boolean().optional(),
+  webToastEnabled: z.boolean().optional(),
 });
 
 /**
@@ -35,6 +36,7 @@ function toApiResponse(
     discordEnabled: row.discordEnabled,
     webhookEnabled: row.webhookEnabled,
     pushEnabled: row.pushEnabled,
+    webToastEnabled: row.webToastEnabled,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -64,6 +66,7 @@ export const channelRoutingRoutes: FastifyPluginAsync = async (app) => {
         discordEnabled: !['stream_started', 'stream_stopped', 'trust_score_changed'].includes(eventType),
         webhookEnabled: !['stream_started', 'stream_stopped', 'trust_score_changed'].includes(eventType),
         pushEnabled: !['stream_started', 'stream_stopped', 'trust_score_changed'].includes(eventType),
+        webToastEnabled: !['stream_started', 'stream_stopped', 'trust_score_changed'].includes(eventType),
       }));
 
       const inserted = await db
@@ -123,6 +126,7 @@ export const channelRoutingRoutes: FastifyPluginAsync = async (app) => {
             discordEnabled: body.data.discordEnabled ?? true,
             webhookEnabled: body.data.webhookEnabled ?? true,
             pushEnabled: body.data.pushEnabled ?? true,
+            webToastEnabled: body.data.webToastEnabled ?? true,
           })
           .returning();
 
@@ -147,6 +151,9 @@ export const channelRoutingRoutes: FastifyPluginAsync = async (app) => {
         }
         if (body.data.pushEnabled !== undefined) {
           updateData.pushEnabled = body.data.pushEnabled;
+        }
+        if (body.data.webToastEnabled !== undefined) {
+          updateData.webToastEnabled = body.data.webToastEnabled;
         }
 
         await db
@@ -184,6 +191,7 @@ export interface ChannelRoutingConfig {
   discordEnabled: boolean;
   webhookEnabled: boolean;
   pushEnabled: boolean;
+  webToastEnabled: boolean;
 }
 
 /**
@@ -197,6 +205,7 @@ export async function getChannelRouting(
       discordEnabled: notificationChannelRouting.discordEnabled,
       webhookEnabled: notificationChannelRouting.webhookEnabled,
       pushEnabled: notificationChannelRouting.pushEnabled,
+      webToastEnabled: notificationChannelRouting.webToastEnabled,
     })
     .from(notificationChannelRouting)
     .where(eq(notificationChannelRouting.eventType, eventType))
@@ -211,6 +220,7 @@ export async function getChannelRouting(
       discordEnabled: !isLowPriorityEvent,
       webhookEnabled: !isLowPriorityEvent,
       pushEnabled: !isLowPriorityEvent,
+      webToastEnabled: !isLowPriorityEvent,
     };
   }
 
@@ -227,6 +237,7 @@ export async function getAllChannelRouting(): Promise<Map<NotificationEventType,
       discordEnabled: notificationChannelRouting.discordEnabled,
       webhookEnabled: notificationChannelRouting.webhookEnabled,
       pushEnabled: notificationChannelRouting.pushEnabled,
+      webToastEnabled: notificationChannelRouting.webToastEnabled,
     })
     .from(notificationChannelRouting);
 
@@ -237,6 +248,7 @@ export async function getAllChannelRouting(): Promise<Map<NotificationEventType,
       discordEnabled: row.discordEnabled,
       webhookEnabled: row.webhookEnabled,
       pushEnabled: row.pushEnabled,
+      webToastEnabled: row.webToastEnabled,
     });
   }
 

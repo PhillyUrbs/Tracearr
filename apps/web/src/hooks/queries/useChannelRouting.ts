@@ -22,8 +22,9 @@ export function useUpdateChannelRouting() {
       eventType: NotificationEventType;
       discordEnabled?: boolean;
       webhookEnabled?: boolean;
+      webToastEnabled?: boolean;
     }) => api.channelRouting.update(eventType, data),
-    onMutate: async ({ eventType, discordEnabled, webhookEnabled }) => {
+    onMutate: async ({ eventType, discordEnabled, webhookEnabled, webToastEnabled }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['channelRouting'] });
 
@@ -39,6 +40,7 @@ export function useUpdateChannelRouting() {
             ...routing,
             ...(discordEnabled !== undefined && { discordEnabled }),
             ...(webhookEnabled !== undefined && { webhookEnabled }),
+            ...(webToastEnabled !== undefined && { webToastEnabled }),
           };
         });
       });

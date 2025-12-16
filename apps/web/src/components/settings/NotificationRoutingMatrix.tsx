@@ -87,26 +87,16 @@ export function NotificationRoutingMatrix({
 
   const handleToggle = (
     eventType: NotificationEventType,
-    channel: 'discord' | 'webhook',
+    channel: 'discord' | 'webhook' | 'webToast',
     checked: boolean
   ) => {
     updateRouting.mutate({
       eventType,
-      ...(channel === 'discord' ? { discordEnabled: checked } : { webhookEnabled: checked }),
+      ...(channel === 'discord' && { discordEnabled: checked }),
+      ...(channel === 'webhook' && { webhookEnabled: checked }),
+      ...(channel === 'webToast' && { webToastEnabled: checked }),
     });
   };
-
-  // Check if at least one channel is configured
-  const hasAnyChannel = discordConfigured || webhookConfigured;
-
-  if (!hasAnyChannel) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground p-4 bg-muted/50 rounded-lg">
-        <Info className="h-4 w-4" />
-        <span>Configure a Discord or Custom Webhook URL above to enable notification routing.</span>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -127,6 +117,7 @@ export function NotificationRoutingMatrix({
             <TableHeader className="bg-muted/50">
               <TableRow>
                 <TableHead className="py-3 px-4">Event</TableHead>
+                <TableHead className="text-center py-3 px-4 w-24">Web</TableHead>
                 {discordConfigured && (
                   <TableHead className="text-center py-3 px-4 w-24">Discord</TableHead>
                 )}
@@ -153,6 +144,15 @@ export function NotificationRoutingMatrix({
                           <p>{config.description}</p>
                         </TooltipContent>
                       </Tooltip>
+                    </TableCell>
+                    <TableCell className="py-3 px-4 text-center">
+                      <Checkbox
+                        checked={routing?.webToastEnabled ?? true}
+                        onCheckedChange={(checked) =>
+                          handleToggle(eventType, 'webToast', checked === true)
+                        }
+                        disabled={updateRouting.isPending}
+                      />
                     </TableCell>
                     {discordConfigured && (
                       <TableCell className="py-3 px-4 text-center">
@@ -183,11 +183,11 @@ export function NotificationRoutingMatrix({
           </Table>
         </div>
 
-        {/* Info about push notifications */}
+        {/* Info about notification channels */}
         <div className="flex items-start gap-2 text-sm text-muted-foreground">
           <Info className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            Push notifications are configured per-device in the mobile app.
+            <strong>Web</strong> shows toast notifications in this browser. Push notifications are configured per-device in the mobile app.
           </span>
         </div>
       </div>
