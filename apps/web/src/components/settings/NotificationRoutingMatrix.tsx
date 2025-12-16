@@ -3,6 +3,14 @@ import type { NotificationChannelRouting, NotificationEventType } from '@tracear
 import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -115,29 +123,26 @@ export function NotificationRoutingMatrix({
       <div className="space-y-4">
         {/* Table */}
         <div className="border rounded-lg overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-muted/50">
-                <th className="text-left py-3 px-4 font-medium text-sm">Event</th>
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead className="py-3 px-4">Event</TableHead>
                 {discordConfigured && (
-                  <th className="text-center py-3 px-4 font-medium text-sm w-24">Discord</th>
+                  <TableHead className="text-center py-3 px-4 w-24">Discord</TableHead>
                 )}
                 {webhookConfigured && (
-                  <th className="text-center py-3 px-4 font-medium text-sm w-24">Webhook</th>
+                  <TableHead className="text-center py-3 px-4 w-24">Webhook</TableHead>
                 )}
-              </tr>
-            </thead>
-            <tbody>
-              {EVENT_ORDER.map((eventType, index) => {
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {EVENT_ORDER.map((eventType) => {
                 const routing = routingMap.get(eventType);
                 const config = EVENT_CONFIG[eventType];
 
                 return (
-                  <tr
-                    key={eventType}
-                    className={index < EVENT_ORDER.length - 1 ? 'border-b' : ''}
-                  >
-                    <td className="py-3 px-4">
+                  <TableRow key={eventType}>
+                    <TableCell className="py-3 px-4">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span className="text-sm cursor-help border-b border-dotted border-muted-foreground/50">
@@ -148,9 +153,9 @@ export function NotificationRoutingMatrix({
                           <p>{config.description}</p>
                         </TooltipContent>
                       </Tooltip>
-                    </td>
+                    </TableCell>
                     {discordConfigured && (
-                      <td className="py-3 px-4 text-center">
+                      <TableCell className="py-3 px-4 text-center">
                         <Checkbox
                           checked={routing?.discordEnabled ?? false}
                           onCheckedChange={(checked) =>
@@ -158,10 +163,10 @@ export function NotificationRoutingMatrix({
                           }
                           disabled={updateRouting.isPending}
                         />
-                      </td>
+                      </TableCell>
                     )}
                     {webhookConfigured && (
-                      <td className="py-3 px-4 text-center">
+                      <TableCell className="py-3 px-4 text-center">
                         <Checkbox
                           checked={routing?.webhookEnabled ?? false}
                           onCheckedChange={(checked) =>
@@ -169,13 +174,13 @@ export function NotificationRoutingMatrix({
                           }
                           disabled={updateRouting.isPending}
                         />
-                      </td>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Info about push notifications */}
