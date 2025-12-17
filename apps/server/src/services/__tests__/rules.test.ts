@@ -91,7 +91,7 @@ describe('RuleEngine', () => {
           params: { maxStreams: 0 },
         }),
         createMockRule('geo_restriction', {
-          params: { blockedCountries: ['CN'] },
+          params: { mode: 'blocklist', countries: ['CN'] },
         }),
       ];
 
@@ -1033,7 +1033,7 @@ describe('RuleEngine', () => {
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: ['CN', 'RU', 'KP'] },
+        params: { mode: 'blocklist', countries: ['CN', 'RU', 'KP'] },
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
@@ -1046,7 +1046,7 @@ describe('RuleEngine', () => {
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: ['CN', 'RU', 'KP'] },
+        params: { mode: 'blocklist', countries: ['CN', 'RU', 'KP'] },
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
@@ -1056,7 +1056,8 @@ describe('RuleEngine', () => {
       expect(results[0]!.severity).toBe('high');
       expect(results[0]!.data).toMatchObject({
         country: 'CN',
-        blockedCountries: ['CN', 'RU', 'KP'],
+        mode: 'blocklist',
+        countries: ['CN', 'RU', 'KP'],
       });
     });
 
@@ -1066,20 +1067,20 @@ describe('RuleEngine', () => {
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: ['CN', 'RU'] },
+        params: { mode: 'blocklist', countries: ['CN', 'RU'] },
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
       expect(results).toHaveLength(0);
     });
 
-    it('should not violate when blockedCountries is empty', async () => {
+    it('should not violate when countries list is empty', async () => {
       const session = createMockSession({
         geoCountry: 'CN',
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: [] },
+        params: { mode: 'blocklist', countries: [] },
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
@@ -1093,7 +1094,7 @@ describe('RuleEngine', () => {
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: ['CN'] }, // uppercase
+        params: { mode: 'blocklist', countries: ['CN'] }, // uppercase
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
@@ -1108,12 +1109,44 @@ describe('RuleEngine', () => {
       });
 
       const rule = createMockRule('geo_restriction', {
-        params: { blockedCountries: ['CN', 'RU', 'KP'] },
+        params: { mode: 'blocklist', countries: ['CN', 'RU', 'KP'] },
       });
 
       const results = await ruleEngine.evaluateSession(session, [rule], []);
       expect(results).toHaveLength(1);
       expect(results[0]!.data.country).toBe('KP');
+    });
+
+    it('should violate in allowlist mode when country is NOT in allowed list', async () => {
+      const session = createMockSession({
+        geoCountry: 'CN',
+      });
+
+      const rule = createMockRule('geo_restriction', {
+        params: { mode: 'allowlist', countries: ['US', 'CA', 'GB'] },
+      });
+
+      const results = await ruleEngine.evaluateSession(session, [rule], []);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.violated).toBe(true);
+      expect(results[0]!.data).toMatchObject({
+        country: 'CN',
+        mode: 'allowlist',
+        countries: ['US', 'CA', 'GB'],
+      });
+    });
+
+    it('should NOT violate in allowlist mode when country IS in allowed list', async () => {
+      const session = createMockSession({
+        geoCountry: 'US',
+      });
+
+      const rule = createMockRule('geo_restriction', {
+        params: { mode: 'allowlist', countries: ['US', 'CA', 'GB'] },
+      });
+
+      const results = await ruleEngine.evaluateSession(session, [rule], []);
+      expect(results).toHaveLength(0);
     });
   });
 
@@ -1139,7 +1172,7 @@ describe('RuleEngine', () => {
         createMockRule('device_velocity'),
         createMockRule('concurrent_streams'),
         createMockRule('geo_restriction', {
-          params: { blockedCountries: ['CN'] },
+          params: { mode: 'blocklist', countries: ['CN'] },
         }),
       ];
 

@@ -19,7 +19,8 @@ export const RULE_DEFAULTS = {
     maxStreams: 3,
   },
   geo_restriction: {
-    blockedCountries: [],
+    mode: 'blocklist',
+    countries: [],
   },
 } as const;
 

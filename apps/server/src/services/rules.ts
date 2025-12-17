@@ -266,13 +266,25 @@ export class RuleEngine {
     session: Session,
     params: GeoRestrictionParams
   ): RuleEvaluationResult {
-    if (session.geoCountry && params.blockedCountries.includes(session.geoCountry)) {
+    // Handle backwards compatibility: old rules have blockedCountries, new rules have mode + countries
+    const mode = params.mode ?? 'blocklist';
+    const countries = params.countries ?? (params as unknown as { blockedCountries?: string[] }).blockedCountries ?? [];
+
+    if (!session.geoCountry || countries.length === 0) {
+      return { violated: false, severity: 'low', data: {} };
+    }
+
+    const isInList = countries.includes(session.geoCountry);
+    const violated = mode === 'blocklist' ? isInList : !isInList;
+
+    if (violated) {
       return {
         violated: true,
         severity: 'high',
         data: {
           country: session.geoCountry,
-          blockedCountries: params.blockedCountries,
+          mode,
+          countries,
         },
       };
     }

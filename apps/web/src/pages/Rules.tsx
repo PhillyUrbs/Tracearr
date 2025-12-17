@@ -79,7 +79,7 @@ const DEFAULT_PARAMS: Record<RuleType, RuleParams> = {
   simultaneous_locations: { minDistanceKm: 100 },
   device_velocity: { maxIps: 5, windowHours: 24 },
   concurrent_streams: { maxStreams: 3 },
-  geo_restriction: { blockedCountries: [] },
+  geo_restriction: { mode: 'blocklist', countries: [] },
 };
 
 interface RuleFormData {
@@ -94,40 +94,64 @@ function GeoRestrictionInput({
   params,
   onChange,
 }: {
-  params: { blockedCountries: string[] };
+  params: { mode?: 'blocklist' | 'allowlist'; countries?: string[]; blockedCountries?: string[] };
   onChange: (params: RuleParams) => void;
 }) {
-  const [inputValue, setInputValue] = useState(params.blockedCountries.join(', '));
+  // Handle backwards compatibility
+  const mode = params.mode ?? 'blocklist';
+  const countries = params.countries ?? params.blockedCountries ?? [];
+  const [inputValue, setInputValue] = useState(countries.join(', '));
 
   const parseAndUpdate = (value: string) => {
-    const countries = value
+    const parsed = value
       .split(',')
       .map((c) => c.trim().toUpperCase())
       .filter(Boolean);
-    onChange({ ...params, blockedCountries: countries });
+    onChange({ mode, countries: parsed });
+  };
+
+  const handleModeChange = (newMode: 'blocklist' | 'allowlist') => {
+    onChange({ mode: newMode, countries });
   };
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor="blockedCountries">Blocked Countries (comma-separated)</Label>
-      <Input
-        id="blockedCountries"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onBlur={() => {
-          parseAndUpdate(inputValue);
-          // Normalize the display after blur
-          const countries = inputValue
-            .split(',')
-            .map((c) => c.trim().toUpperCase())
-            .filter(Boolean);
-          setInputValue(countries.join(', '));
-        }}
-        placeholder="US, CN, RU"
-      />
-      <p className="text-xs text-muted-foreground">
-        ISO 3166-1 alpha-2 country codes separated by commas
-      </p>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Mode</Label>
+        <Select value={mode} onValueChange={(v) => handleModeChange(v as 'blocklist' | 'allowlist')}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="blocklist">Blocklist (block these countries)</SelectItem>
+            <SelectItem value="allowlist">Allowlist (only allow these countries)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="countries">
+          {mode === 'blocklist' ? 'Blocked' : 'Allowed'} Countries (comma-separated)
+        </Label>
+        <Input
+          id="countries"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={() => {
+            parseAndUpdate(inputValue);
+            // Normalize the display after blur
+            const normalized = inputValue
+              .split(',')
+              .map((c) => c.trim().toUpperCase())
+              .filter(Boolean);
+            setInputValue(normalized.join(', '));
+          }}
+          placeholder={mode === 'blocklist' ? 'CN, RU, ...' : 'US, CA, GB, ...'}
+        />
+        <p className="text-xs text-muted-foreground">
+          ISO 3166-1 alpha-2 country codes separated by commas.
+          {mode === 'allowlist' && ' Streams from any other country will trigger a violation.'}
+        </p>
+      </div>
     </div>
   );
 }
@@ -245,7 +269,7 @@ function RuleParamsForm({
     case 'geo_restriction':
       return (
         <GeoRestrictionInput
-          params={params as { blockedCountries: string[] }}
+          params={params as { mode?: 'blocklist' | 'allowlist'; countries?: string[]; blockedCountries?: string[] }}
           onChange={onChange}
         />
       );
@@ -406,13 +430,17 @@ function RuleCard({
                 {rule.type === 'concurrent_streams' && (
                   <span>Max streams: {(rule.params as { maxStreams: number }).maxStreams}</span>
                 )}
-                {rule.type === 'geo_restriction' && (
-                  <span>
-                    Blocked:{' '}
-                    {(rule.params as { blockedCountries: string[] }).blockedCountries.join(', ') ||
-                      'None'}
-                  </span>
-                )}
+                {rule.type === 'geo_restriction' && (() => {
+                  const p = rule.params as { mode?: string; countries?: string[]; blockedCountries?: string[] };
+                  const mode = p.mode ?? 'blocklist';
+                  const countries = p.countries ?? p.blockedCountries ?? [];
+                  return (
+                    <span>
+                      {mode === 'allowlist' ? 'Allowed' : 'Blocked'}:{' '}
+                      {countries.join(', ') || 'None'}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
