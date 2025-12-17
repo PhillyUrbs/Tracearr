@@ -53,6 +53,60 @@ function truncateForDiscord(text: string, maxLength = 1000): string {
   return text.substring(0, maxLength - 3) + '...';
 }
 
+/**
+ * Format duration in milliseconds to human-readable string
+ */
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+
+  if (hours > 0) {
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
+  if (minutes > 0) {
+    const remainingSeconds = seconds % 60;
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+/**
+ * Get display title for media (matches UI card logic)
+ */
+function getMediaDisplay(session: ActiveSession): { title: string; subtitle: string | null } {
+  if (session.mediaType === 'episode' && session.grandparentTitle) {
+    // TV Show episode: show name as title, episode info as subtitle
+    const episodeInfo =
+      session.seasonNumber && session.episodeNumber
+        ? `S${session.seasonNumber.toString().padStart(2, '0')}E${session.episodeNumber.toString().padStart(2, '0')}`
+        : '';
+    return {
+      title: session.grandparentTitle,
+      subtitle: episodeInfo ? `${episodeInfo} · ${session.mediaTitle}` : session.mediaTitle,
+    };
+  }
+  // Movie or music
+  return {
+    title: session.mediaTitle,
+    subtitle: session.year ? `${session.year}` : null,
+  };
+}
+
+/**
+ * Get playback type (matches UI badge logic)
+ */
+function getPlaybackType(session: ActiveSession): string {
+  if (session.isTranscode) {
+    return 'Transcode';
+  }
+  if (session.videoDecision === 'copy' || session.audioDecision === 'copy') {
+    return 'Direct Stream';
+  }
+  return 'Direct Play';
+}
+
 export class NotificationService {
   /**
    * Send violation notification
@@ -81,38 +135,115 @@ export class NotificationService {
    * Send session started notification
    */
   async notifySessionStarted(session: ActiveSession, settings: Settings): Promise<void> {
-    const payload: NotificationPayload = {
-      event: NOTIFICATION_EVENTS.STREAM_STARTED,
-      timestamp: new Date().toISOString(),
-      data: {
-        user: { id: session.serverUserId, username: session.user.username },
-        media: { title: session.mediaTitle, type: session.mediaType },
-        location: { city: session.geoCity, country: session.geoCountry },
-      },
-    };
+    const promises: Promise<void>[] = [];
+
+    // Get display title matching the UI card logic
+    const { title: mediaTitle, subtitle } = getMediaDisplay(session);
+    const playbackType = getPlaybackType(session);
+
+    if (settings.discordWebhookUrl) {
+      promises.push(
+        this.sendDiscordMessage(settings.discordWebhookUrl, {
+          title: 'Stream Started',
+          color: 0x3498db, // Blue
+          fields: [
+            { name: 'User', value: session.user.identityName ?? session.user.username, inline: true },
+            { name: 'Media', value: mediaTitle, inline: true },
+            ...(subtitle ? [{ name: 'Episode', value: subtitle, inline: true }] : []),
+            { name: 'Playback', value: playbackType, inline: true },
+            ...(session.geoCity
+              ? [{ name: 'Location', value: `${session.geoCity}, ${session.geoCountry}`, inline: true }]
+              : []),
+            { name: 'Player', value: session.product || session.playerName || 'Unknown', inline: true },
+          ],
+        })
+      );
+    }
 
     if (settings.customWebhookUrl) {
-      await this.sendFormattedWebhook(settings, payload, { session, eventType: 'session_started' });
+      const payload: NotificationPayload = {
+        event: NOTIFICATION_EVENTS.STREAM_STARTED,
+        timestamp: new Date().toISOString(),
+        data: {
+          user: {
+            id: session.serverUserId,
+            username: session.user.username,
+            displayName: session.user.identityName ?? session.user.username,
+          },
+          media: {
+            title: mediaTitle,
+            subtitle: subtitle,
+            type: session.mediaType,
+            year: session.year,
+          },
+          playback: {
+            type: playbackType,
+            quality: session.quality,
+            player: session.product || session.playerName,
+          },
+          location: { city: session.geoCity, country: session.geoCountry },
+        },
+      };
+      promises.push(
+        this.sendFormattedWebhook(settings, payload, { session, eventType: 'session_started' })
+      );
     }
+
+    await Promise.allSettled(promises);
   }
 
   /**
    * Send session stopped notification
    */
   async notifySessionStopped(session: ActiveSession, settings: Settings): Promise<void> {
-    const payload: NotificationPayload = {
-      event: NOTIFICATION_EVENTS.STREAM_STOPPED,
-      timestamp: new Date().toISOString(),
-      data: {
-        user: { id: session.serverUserId, username: session.user.username },
-        media: { title: session.mediaTitle, type: session.mediaType },
-        duration: session.durationMs,
-      },
-    };
+    const promises: Promise<void>[] = [];
+
+    // Get display title matching the UI card logic
+    const { title: mediaTitle, subtitle } = getMediaDisplay(session);
+    const durationStr = session.durationMs ? formatDuration(session.durationMs) : 'Unknown';
+
+    if (settings.discordWebhookUrl) {
+      promises.push(
+        this.sendDiscordMessage(settings.discordWebhookUrl, {
+          title: 'Stream Stopped',
+          color: 0x95a5a6, // Gray
+          fields: [
+            { name: 'User', value: session.user.identityName ?? session.user.username, inline: true },
+            { name: 'Media', value: mediaTitle, inline: true },
+            ...(subtitle ? [{ name: 'Episode', value: subtitle, inline: true }] : []),
+            { name: 'Duration', value: durationStr, inline: true },
+          ],
+        })
+      );
+    }
 
     if (settings.customWebhookUrl) {
-      await this.sendFormattedWebhook(settings, payload, { session, eventType: 'session_stopped' });
+      const payload: NotificationPayload = {
+        event: NOTIFICATION_EVENTS.STREAM_STOPPED,
+        timestamp: new Date().toISOString(),
+        data: {
+          user: {
+            id: session.serverUserId,
+            username: session.user.username,
+            displayName: session.user.identityName ?? session.user.username,
+          },
+          media: {
+            title: mediaTitle,
+            subtitle: subtitle,
+            type: session.mediaType,
+          },
+          duration: {
+            ms: session.durationMs,
+            formatted: durationStr,
+          },
+        },
+      };
+      promises.push(
+        this.sendFormattedWebhook(settings, payload, { session, eventType: 'session_stopped' })
+      );
     }
+
+    await Promise.allSettled(promises);
   }
 
   /**
@@ -286,20 +417,25 @@ export class NotificationService {
     }
 
     if (session) {
+      const { title: mediaTitle, subtitle } = getMediaDisplay(session);
+      const userName = session.user.identityName ?? session.user.username;
+      const mediaDisplay = subtitle ? `${mediaTitle} - ${subtitle}` : mediaTitle;
+
       if (eventType === 'session_started') {
         return {
           topic: ntfyTopic,
           title: 'Stream Started',
-          message: `${session.user.username} started watching ${session.mediaTitle}`,
+          message: `${userName} started watching ${mediaDisplay}`,
           priority: 3,
           tags: ['arrow_forward'],
         };
       }
       // session_stopped
+      const durationStr = session.durationMs ? ` (${formatDuration(session.durationMs)})` : '';
       return {
         topic: ntfyTopic,
         title: 'Stream Stopped',
-        message: `${session.user.username} stopped watching ${session.mediaTitle}`,
+        message: `${userName} stopped watching ${mediaDisplay}${durationStr}`,
         priority: 3,
         tags: ['stop_button'],
       };
@@ -360,17 +496,22 @@ export class NotificationService {
     }
 
     if (session) {
+      const { title: mediaTitle, subtitle } = getMediaDisplay(session);
+      const userName = session.user.identityName ?? session.user.username;
+      const mediaDisplay = subtitle ? `${mediaTitle} - ${subtitle}` : mediaTitle;
+
       if (eventType === 'session_started') {
         return {
           title: 'Stream Started',
-          body: `${session.user.username} started watching ${session.mediaTitle}`,
+          body: `${userName} started watching ${mediaDisplay}`,
           type: 'info',
         };
       }
       // session_stopped
+      const durationStr = session.durationMs ? ` (${formatDuration(session.durationMs)})` : '';
       return {
         title: 'Stream Stopped',
-        body: `${session.user.username} stopped watching ${session.mediaTitle}`,
+        body: `${userName} stopped watching ${mediaDisplay}${durationStr}`,
         type: 'info',
       };
     }
