@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents -- eslint can't resolve @tracearr/shared types but TS compiles fine */
 import { useState } from 'react';
-import { Monitor, Wifi, Globe, Check, X, Loader2, ChevronDown, ChevronRight, Lock } from 'lucide-react';
+import { Monitor, Wifi, Globe, Check, X, Loader2, ChevronDown, ChevronRight, Lock, Edit3, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { PlexDiscoveredServer, PlexDiscoveredConnection } from '@tracearr/shared';
 import type { PlexServerInfo, PlexServerConnection } from '@/lib/api';
@@ -94,6 +95,11 @@ export function PlexServerSelector({
 }: PlexServerSelectorProps) {
   // Track which servers have expanded connection lists
   const [expandedServers, setExpandedServers] = useState<Set<string>>(new Set());
+  // Track servers showing all connections (bypassing filtering)
+  const [showAllConnections, setShowAllConnections] = useState<Set<string>>(new Set());
+  // Custom URL input state
+  const [customUrlServer, setCustomUrlServer] = useState<string | null>(null);
+  const [customUrl, setCustomUrl] = useState('');
 
   const toggleExpanded = (clientIdentifier: string) => {
     setExpandedServers(prev => {
@@ -105,6 +111,30 @@ export function PlexServerSelector({
       }
       return next;
     });
+  };
+
+  const toggleShowAll = (clientIdentifier: string) => {
+    setShowAllConnections(prev => {
+      const next = new Set(prev);
+      if (next.has(clientIdentifier)) {
+        next.delete(clientIdentifier);
+      } else {
+        next.add(clientIdentifier);
+      }
+      return next;
+    });
+  };
+
+  const handleCustomUrlSubmit = (server: PlexDiscoveredServer | PlexServerInfo) => {
+    if (!customUrl.trim()) return;
+    let url = customUrl.trim();
+    // Add protocol if missing
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `http://${url}`;
+    }
+    onSelect(url, server.name, server.clientIdentifier);
+    setCustomUrl('');
+    setCustomUrlServer(null);
   };
 
   const handleQuickConnect = (server: PlexDiscoveredServer | PlexServerInfo) => {
@@ -140,6 +170,8 @@ export function PlexServerSelector({
       {servers.map((server) => {
         const clientId = server.clientIdentifier;
         const isExpanded = expandedServers.has(clientId);
+        const showingAll = showAllConnections.has(clientId);
+        const showingCustomUrl = customUrlServer === clientId;
         const isDiscovered = isDiscoveredServer(server);
         const hasRecommended = isDiscovered && server.recommendedUri;
         const isConnecting = connectingToServer === server.name;
@@ -215,19 +247,89 @@ export function PlexServerSelector({
             )}
 
             {/* Connection Count & Expand Toggle */}
-            <button
-              type="button"
-              onClick={() => toggleExpanded(clientId)}
-              className="mt-3 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {isExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => toggleExpanded(clientId)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+                {reachableCount} of {server.connections.length} connections
+                {isDiscovered ? ' reachable' : ' available'}
+              </button>
+
+              {/* Show all toggle (for discovered servers with filtered connections) */}
+              {isDiscovered && reachableCount < server.connections.length && (
+                <button
+                  type="button"
+                  onClick={() => toggleShowAll(clientId)}
+                  className={cn(
+                    'text-xs transition-colors',
+                    showingAll
+                      ? 'text-primary hover:text-primary/80'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {showingAll ? 'Hide filtered' : 'Show all'}
+                </button>
               )}
-              {reachableCount} of {server.connections.length} connections
-              {isDiscovered ? ' reachable' : ' available'}
-            </button>
+
+              {/* Custom URL toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (showingCustomUrl) {
+                    setCustomUrlServer(null);
+                    setCustomUrl('');
+                  } else {
+                    setCustomUrlServer(clientId);
+                  }
+                }}
+                className={cn(
+                  'flex items-center gap-1 text-xs transition-colors',
+                  showingCustomUrl
+                    ? 'text-primary hover:text-primary/80'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Edit3 className="h-3 w-3" />
+                Custom URL
+              </button>
+            </div>
+
+            {/* Custom URL Input */}
+            {showingCustomUrl && (
+              <div className="mt-3 flex gap-2">
+                <Input
+                  type="text"
+                  placeholder="https://plex.example.com:32400"
+                  value={customUrl}
+                  onChange={(e) => setCustomUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCustomUrlSubmit(server);
+                    }
+                    if (e.key === 'Escape') {
+                      setCustomUrlServer(null);
+                      setCustomUrl('');
+                    }
+                  }}
+                  disabled={connecting}
+                  className="flex-1 h-8 text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => handleCustomUrlSubmit(server)}
+                  disabled={connecting || !customUrl.trim()}
+                >
+                  Connect
+                </Button>
+              </div>
+            )}
 
             {/* Expanded Connection List */}
             {isExpanded && (
@@ -235,19 +337,22 @@ export function PlexServerSelector({
                 {server.connections.map((conn) => {
                   const isDiscoveredConn = isDiscoveredConnection(conn);
                   const isReachable = isDiscoveredConn ? conn.reachable : true;
+                  // Allow clicking unreachable connections when showingAll is enabled
+                  const canClick = isReachable || showingAll;
                   const isRecommended = isDiscovered && conn.uri === server.recommendedUri;
 
                   return (
                     <button
                       key={conn.uri}
                       type="button"
-                      onClick={() => isReachable && handleConnectionSelect(server, conn)}
-                      disabled={connecting || !isReachable}
+                      onClick={() => canClick && handleConnectionSelect(server, conn)}
+                      disabled={connecting || !canClick}
                       className={cn(
                         'w-full flex items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors',
-                        isReachable
+                        canClick
                           ? 'hover:bg-muted cursor-pointer'
                           : 'opacity-50 cursor-not-allowed',
+                        !isReachable && canClick && 'opacity-70',
                         isRecommended && 'bg-muted/50 ring-1 ring-primary/20'
                       )}
                     >
@@ -275,6 +380,14 @@ export function PlexServerSelector({
                           <span className="flex-shrink-0 inline-flex items-center gap-0.5 text-xs text-green-600 dark:text-green-500 font-medium">
                             <Lock className="h-3 w-3" />
                             Secure
+                          </span>
+                        )}
+
+                        {/* Unreachable warning when shown via "Show all" */}
+                        {!isReachable && showingAll && (
+                          <span className="flex-shrink-0 inline-flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-500 font-medium">
+                            <AlertTriangle className="h-3 w-3" />
+                            May not connect
                           </span>
                         )}
 
