@@ -596,7 +596,8 @@ describe('Jellyfin Parser - PlayMethod and Transcode Detection', () => {
     });
 
     expect(session!.quality.isTranscode).toBe(false);
-    expect(session!.quality.videoDecision).toBe('directstream');
+    // DirectStream is normalized to 'copy' (video/audio streams copied, container may change)
+    expect(session!.quality.videoDecision).toBe('copy');
   });
 
   it('should normalize PlayMethod to lowercase', () => {

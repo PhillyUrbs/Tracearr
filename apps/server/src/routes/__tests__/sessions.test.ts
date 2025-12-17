@@ -399,8 +399,8 @@ describe('Session Routes', () => {
       expect(response.statusCode).toBe(200);
       const body = JSON.parse(response.body);
       expect(body.id).toBe(sessionId);
-      expect(body.username).toBe(activeSession.user.username);
-      expect(body.serverName).toBe(activeSession.server.name);
+      expect(body.user.username).toBe(activeSession.user.username);
+      expect(body.server.name).toBe(activeSession.server.name);
     });
 
     it('should return session from database if not in cache', async () => {
@@ -422,6 +422,7 @@ describe('Session Routes', () => {
         serverUserId: randomUUID(),
         username: 'testuser',
         userThumb: null,
+        identityName: null,
         sessionKey: 'session-1',
         state: 'stopped',
         mediaType: 'movie',
@@ -462,8 +463,10 @@ describe('Session Routes', () => {
         from: vi.fn().mockReturnValue({
           innerJoin: vi.fn().mockReturnValue({
             innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([dbSession]),
+              leftJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([dbSession]),
+                }),
               }),
             }),
           }),
@@ -492,8 +495,10 @@ describe('Session Routes', () => {
         from: vi.fn().mockReturnValue({
           innerJoin: vi.fn().mockReturnValue({
             innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([]),
+                }),
               }),
             }),
           }),
@@ -540,6 +545,7 @@ describe('Session Routes', () => {
         serverUserId: randomUUID(),
         username: 'testuser',
         userThumb: null,
+        identityName: null,
         sessionKey: 'session-1',
         state: 'stopped',
         mediaType: 'movie',
@@ -580,8 +586,10 @@ describe('Session Routes', () => {
         from: vi.fn().mockReturnValue({
           innerJoin: vi.fn().mockReturnValue({
             innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([dbSession]),
+              leftJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([dbSession]),
+                }),
               }),
             }),
           }),
@@ -615,8 +623,10 @@ describe('Session Routes', () => {
         from: vi.fn().mockReturnValue({
           innerJoin: vi.fn().mockReturnValue({
             innerJoin: vi.fn().mockReturnValue({
-              where: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue([]),
+              leftJoin: vi.fn().mockReturnValue({
+                where: vi.fn().mockReturnValue({
+                  limit: vi.fn().mockResolvedValue([]),
+                }),
               }),
             }),
           }),

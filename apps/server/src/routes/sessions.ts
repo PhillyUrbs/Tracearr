@@ -342,7 +342,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
         isTranscode,
         watched,
         excludeShortSessions,
-        orderBy = 'startedAt',
+        orderBy: _orderBy = 'startedAt',
         orderDir = 'desc',
       } = query.data;
 
@@ -958,7 +958,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
         server: {
           id: row.serverId,
           name: row.serverName,
-          type: row.serverType as 'plex' | 'jellyfin' | 'emby',
+          type: row.serverType,
         },
         sessionKey: row.sessionKey,
         state: row.state,

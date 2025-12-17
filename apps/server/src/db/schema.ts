@@ -53,42 +53,9 @@ export const servers = pgTable('servers', {
   url: text('url').notNull(),
   token: text('token').notNull(), // Encrypted
   machineIdentifier: varchar('machine_identifier', { length: 100 }), // Plex clientIdentifier for dedup
-  // For Plex servers: links to which Plex account owns this server (for multi-account support)
-  plexAccountId: varchar('plex_account_id', { length: 255 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
-
-/**
- * User Plex Accounts - Junction table for multi-Plex account support
- *
- * Allows one Tracearr user to link multiple Plex.tv accounts.
- * Each Plex account can only be linked to ONE Tracearr user (global uniqueness).
- */
-export const userPlexAccounts = pgTable(
-  'user_plex_accounts',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
-    plexAccountId: varchar('plex_account_id', { length: 255 }).notNull(),
-    plexUsername: varchar('plex_username', { length: 255 }).notNull(),
-    plexEmail: varchar('plex_email', { length: 255 }),
-    plexThumb: text('plex_thumb'),
-    plexToken: text('plex_token').notNull(), // Encrypted, for API calls
-    isPrimary: boolean('is_primary').notNull().default(false), // Primary account for avatar
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    // One user can only link each Plex account once
-    uniqueIndex('user_plex_accounts_user_plex_unique').on(table.userId, table.plexAccountId),
-    // Global uniqueness: each Plex account can only be linked to ONE Tracearr user
-    uniqueIndex('user_plex_accounts_plex_id_unique').on(table.plexAccountId),
-    index('user_plex_accounts_user_idx').on(table.userId),
-  ]
-);
 
 /**
  * Users - Identity table representing real humans
@@ -558,14 +525,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   serverUsers: many(serverUsers),
   mobileSessions: many(mobileSessions),
   mobileTokens: many(mobileTokens),
-  plexAccounts: many(userPlexAccounts),
-}));
-
-export const userPlexAccountsRelations = relations(userPlexAccounts, ({ one }) => ({
-  user: one(users, {
-    fields: [userPlexAccounts.userId],
-    references: [users.id],
-  }),
 }));
 
 export const serverUsersRelations = relations(serverUsers, ({ one, many }) => ({
