@@ -27,6 +27,9 @@ import type {
   PlexAvailableServersResponse,
   NotificationChannelRouting,
   NotificationEventType,
+  HistorySessionResponse,
+  HistoryFilterOptions,
+  HistoryQueryInput,
 } from '@tracearr/shared';
 
 // Re-export shared types needed by frontend components
@@ -440,6 +443,44 @@ class ApiClient {
       if (params?.serverId) searchParams.set('serverId', params.serverId);
       return this.request<PaginatedResponse<SessionWithDetails>>(`/sessions?${searchParams.toString()}`);
     },
+    /**
+     * Query history with cursor-based pagination and advanced filters.
+     * Supports infinite scroll patterns with aggregate stats.
+     */
+    history: (params: Partial<HistoryQueryInput> & { cursor?: string }) => {
+      const searchParams = new URLSearchParams();
+      if (params.cursor) searchParams.set('cursor', params.cursor);
+      if (params.pageSize) searchParams.set('pageSize', String(params.pageSize));
+      if (params.serverUserId) searchParams.set('serverUserId', params.serverUserId);
+      if (params.serverId) searchParams.set('serverId', params.serverId);
+      if (params.state) searchParams.set('state', params.state);
+      if (params.mediaType) searchParams.set('mediaType', params.mediaType);
+      if (params.startDate) searchParams.set('startDate', params.startDate.toISOString());
+      if (params.endDate) searchParams.set('endDate', params.endDate.toISOString());
+      if (params.search) searchParams.set('search', params.search);
+      if (params.platform) searchParams.set('platform', params.platform);
+      if (params.product) searchParams.set('product', params.product);
+      if (params.device) searchParams.set('device', params.device);
+      if (params.playerName) searchParams.set('playerName', params.playerName);
+      if (params.ipAddress) searchParams.set('ipAddress', params.ipAddress);
+      if (params.geoCountry) searchParams.set('geoCountry', params.geoCountry);
+      if (params.geoCity) searchParams.set('geoCity', params.geoCity);
+      if (params.geoRegion) searchParams.set('geoRegion', params.geoRegion);
+      if (params.isTranscode !== undefined) searchParams.set('isTranscode', String(params.isTranscode));
+      if (params.watched !== undefined) searchParams.set('watched', String(params.watched));
+      if (params.excludeShortSessions) searchParams.set('excludeShortSessions', 'true');
+      if (params.orderBy) searchParams.set('orderBy', params.orderBy);
+      if (params.orderDir) searchParams.set('orderDir', params.orderDir);
+      return this.request<HistorySessionResponse>(`/sessions/history?${searchParams.toString()}`);
+    },
+    /**
+     * Get available filter values for dropdowns on the History page.
+     */
+    filterOptions: (serverId?: string) => {
+      const searchParams = new URLSearchParams();
+      if (serverId) searchParams.set('serverId', serverId);
+      return this.request<HistoryFilterOptions>(`/sessions/filter-options?${searchParams.toString()}`);
+    },
     getActive: async (serverId?: string) => {
       const params = new URLSearchParams();
       if (serverId) params.set('serverId', serverId);
@@ -612,6 +653,17 @@ class ApiClient {
     get: () => this.request<Settings>('/settings'),
     update: (data: Partial<Settings>) =>
       this.request<Settings>('/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+    testWebhook: (data: {
+      type: 'discord' | 'custom';
+      url?: string;
+      format?: 'json' | 'ntfy' | 'apprise';
+      ntfyTopic?: string;
+      ntfyAuthToken?: string;
+    }) =>
+      this.request<{ success: boolean; error?: string }>('/settings/test-webhook', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   };
 
   // Channel Routing

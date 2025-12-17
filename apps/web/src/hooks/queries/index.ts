@@ -19,6 +19,9 @@ export {
 export { useSessions, useActiveSessions, useSession } from './useSessions';
 export { useTerminateSession } from './useTerminateSession';
 
+// History hooks (advanced session queries with infinite scroll)
+export { useHistorySessions, useFilterOptions, type HistoryFilters } from './useHistory';
+
 // User hooks
 export {
   useUsers,

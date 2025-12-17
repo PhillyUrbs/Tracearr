@@ -12,6 +12,7 @@ import { Users } from '@/pages/Users';
 import { UserDetail } from '@/pages/UserDetail';
 import { Rules } from '@/pages/Rules';
 import { Violations } from '@/pages/Violations';
+import { History } from '@/pages/History';
 import { Settings } from '@/pages/Settings';
 import { Debug } from '@/pages/Debug';
 import { NotFound } from '@/pages/NotFound';
@@ -44,6 +45,7 @@ export function App() {
           <Route path="stats/users" element={<StatsUsers />} />
 
           {/* Other routes */}
+          <Route path="history" element={<History />} />
           <Route path="users" element={<Users />} />
           <Route path="users/:id" element={<UserDetail />} />
           <Route path="rules" element={<Rules />} />

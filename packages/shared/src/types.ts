@@ -183,6 +183,8 @@ export interface Session {
   platform: string | null;
   quality: string | null;
   isTranscode: boolean;
+  videoDecision: string | null; // 'directplay' | 'copy' | 'transcode'
+  audioDecision: string | null; // 'directplay' | 'copy' | 'transcode'
   bitrate: number | null;
 }
 
@@ -196,10 +198,8 @@ export interface ActiveSession extends Session {
 // Note: The single session endpoint (GET /sessions/:id) returns totalDurationMs,
 // while paginated list queries aggregate duration and don't include it.
 export interface SessionWithDetails extends Omit<Session, 'ratingKey' | 'externalSessionId'> {
-  username: string;
-  userThumb: string | null;
-  serverName: string;
-  serverType: ServerType;
+  user: Pick<ServerUser, 'id' | 'username' | 'thumbUrl'> & { identityName: string | null };
+  server: Pick<Server, 'id' | 'name' | 'type'>;
   // Number of pause/resume segments in this grouped play (1 = no pauses)
   segmentCount?: number;
 }
@@ -230,8 +230,11 @@ export interface ConcurrentStreamsParams {
   maxStreams: number;
 }
 
+export type GeoRestrictionMode = 'blocklist' | 'allowlist';
+
 export interface GeoRestrictionParams {
-  blockedCountries: string[];
+  mode: GeoRestrictionMode;
+  countries: string[];
 }
 
 export type RuleParams =
@@ -460,6 +463,7 @@ export interface Settings {
   customWebhookUrl: string | null;
   webhookFormat: WebhookFormat | null;
   ntfyTopic: string | null;
+  ntfyAuthToken: string | null;
   // Poller settings
   pollerEnabled: boolean;
   pollerIntervalMs: number;
@@ -574,6 +578,79 @@ export interface PaginatedResponse<T> {
   page: number;
   pageSize: number;
   totalPages: number;
+}
+
+// =============================================================================
+// History Page Types
+// =============================================================================
+
+/**
+ * Aggregate stats returned with history query results.
+ * These are computed across the entire filtered result set (not just current page).
+ */
+export interface HistoryAggregates {
+  /** Total watch time in milliseconds across all matching sessions */
+  totalWatchTimeMs: number;
+  /** Count of unique plays (grouped by reference_id) */
+  playCount: number;
+  /** Count of unique users in the result set */
+  uniqueUsers: number;
+  /** Count of unique content items watched */
+  uniqueContent: number;
+}
+
+/**
+ * Response shape for history/sessions queries with cursor-based pagination.
+ * Supports infinite scroll patterns with aggregate stats.
+ */
+export interface HistorySessionResponse {
+  data: SessionWithDetails[];
+  /** Aggregate stats for the entire filtered result set */
+  aggregates: HistoryAggregates;
+  /** Total count of matching plays */
+  total: number;
+  /** Cursor for fetching the next page (undefined if no more results) */
+  nextCursor?: string;
+  /** Whether more results exist beyond the current page */
+  hasMore: boolean;
+}
+
+/**
+ * Option item with count for filter dropdowns.
+ * Count represents number of plays with this value.
+ */
+export interface FilterOptionItem {
+  value: string;
+  count: number;
+}
+
+/**
+ * User option for user filter dropdown.
+ */
+export interface UserFilterOption {
+  id: string;
+  username: string;
+  thumbUrl: string | null;
+  identityName: string | null;
+}
+
+/**
+ * Available filter options for the history page.
+ * Returned by GET /sessions/filter-options to populate dropdowns.
+ */
+export interface HistoryFilterOptions {
+  /** Available platforms (Windows, macOS, iOS, etc.) */
+  platforms: FilterOptionItem[];
+  /** Available products/apps (Plex for Windows, etc.) */
+  products: FilterOptionItem[];
+  /** Available device types (iPhone, Android TV, etc.) */
+  devices: FilterOptionItem[];
+  /** Available countries */
+  countries: FilterOptionItem[];
+  /** Available cities */
+  cities: FilterOptionItem[];
+  /** Available users (with avatar info) */
+  users: UserFilterOption[];
 }
 
 export interface ApiError {

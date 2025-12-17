@@ -384,29 +384,44 @@ describe('Rule Parameter Schemas', () => {
   });
 
   describe('geoRestrictionParamsSchema', () => {
-    it('should validate with blocked countries', () => {
+    it('should validate with blocklist mode and countries', () => {
       const result = geoRestrictionParamsSchema.safeParse({
-        blockedCountries: ['CN', 'RU', 'KP'],
+        mode: 'blocklist',
+        countries: ['CN', 'RU', 'KP'],
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.blockedCountries).toEqual(['CN', 'RU', 'KP']);
+        expect(result.data.mode).toBe('blocklist');
+        expect(result.data.countries).toEqual(['CN', 'RU', 'KP']);
       }
     });
 
-    it('should apply empty default for blockedCountries', () => {
+    it('should validate with allowlist mode', () => {
+      const result = geoRestrictionParamsSchema.safeParse({
+        mode: 'allowlist',
+        countries: ['US', 'CA', 'GB'],
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.mode).toBe('allowlist');
+        expect(result.data.countries).toEqual(['US', 'CA', 'GB']);
+      }
+    });
+
+    it('should apply defaults for empty object', () => {
       const result = geoRestrictionParamsSchema.safeParse({});
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.blockedCountries).toEqual([]);
+        expect(result.data.mode).toBe('blocklist');
+        expect(result.data.countries).toEqual([]);
       }
     });
 
     it('should reject country codes that are not 2 characters', () => {
       const invalidInputs = [
-        { blockedCountries: ['USA'] }, // 3 chars
-        { blockedCountries: ['C'] }, // 1 char
-        { blockedCountries: ['CHINA'] }, // 5 chars
+        { mode: 'blocklist', countries: ['USA'] }, // 3 chars
+        { mode: 'blocklist', countries: ['C'] }, // 1 char
+        { mode: 'blocklist', countries: ['CHINA'] }, // 5 chars
       ];
 
       for (const input of invalidInputs) {
@@ -415,11 +430,20 @@ describe('Rule Parameter Schemas', () => {
       }
     });
 
-    it('should allow empty array', () => {
+    it('should allow empty countries array', () => {
       const result = geoRestrictionParamsSchema.safeParse({
-        blockedCountries: [],
+        mode: 'blocklist',
+        countries: [],
       });
       expect(result.success).toBe(true);
+    });
+
+    it('should reject invalid mode values', () => {
+      const result = geoRestrictionParamsSchema.safeParse({
+        mode: 'invalid',
+        countries: ['US'],
+      });
+      expect(result.success).toBe(false);
     });
   });
 });

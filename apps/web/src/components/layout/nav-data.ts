@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Map,
+  History,
   BarChart3,
   Users,
   Shield,
@@ -32,6 +33,7 @@ export function isNavGroup(entry: NavEntry): entry is NavGroup {
 export const navigation: NavEntry[] = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Map', href: '/map', icon: Map },
+  { name: 'History', href: '/history', icon: History },
   {
     name: 'Stats',
     icon: BarChart3,

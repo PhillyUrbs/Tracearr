@@ -61,6 +61,51 @@ export const sessionQuerySchema = paginationSchema.extend({
   endDate: z.coerce.date().optional(),
 });
 
+/**
+ * Enhanced history query schema with comprehensive filtering for the History page.
+ * Supports cursor-based pagination for efficient infinite scroll and
+ * all available session fields for filtering.
+ */
+export const historyQuerySchema = z.object({
+  // Pagination - cursor-based for infinite scroll (more efficient than offset for large datasets)
+  cursor: z.string().optional(), // Composite: `${startedAt.getTime()}_${playId}`
+  pageSize: z.coerce.number().int().positive().max(100).default(50),
+
+  // Existing filters from sessionQuerySchema
+  serverUserId: uuidSchema.optional(),
+  serverId: uuidSchema.optional(),
+  state: z.enum(['playing', 'paused', 'stopped']).optional(),
+  mediaType: z.enum(['movie', 'episode', 'track']).optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+
+  // Title/content search (ILIKE on mediaTitle and grandparentTitle)
+  search: z.string().max(200).optional(),
+
+  // Device/client filters
+  platform: z.string().max(100).optional(), // Windows, macOS, iOS, Android
+  product: z.string().max(255).optional(), // Plex for Windows, Jellyfin Web
+  device: z.string().max(255).optional(), // iPhone, Android TV
+  playerName: z.string().max(255).optional(), // Device friendly name
+
+  // Network/location filters
+  ipAddress: z.string().max(45).optional(), // Exact IP match
+  geoCountry: z.string().max(100).optional(), // Country name or code
+  geoCity: z.string().max(255).optional(), // City name
+  geoRegion: z.string().max(255).optional(), // State/province
+
+  // Stream quality filters
+  isTranscode: z.coerce.boolean().optional(), // true = transcode, false = direct play
+
+  // Status filters
+  watched: z.coerce.boolean().optional(), // 85%+ completion
+  excludeShortSessions: z.coerce.boolean().optional(), // Exclude <120s sessions
+
+  // Sorting
+  orderBy: z.enum(['startedAt', 'durationMs', 'mediaTitle']).default('startedAt'),
+  orderDir: z.enum(['asc', 'desc']).default('desc'),
+});
+
 export const sessionIdParamSchema = z.object({
   id: uuidSchema,
 });
@@ -91,7 +136,8 @@ export const concurrentStreamsParamsSchema = z.object({
 });
 
 export const geoRestrictionParamsSchema = z.object({
-  blockedCountries: z.array(z.string().length(2)).default([]),
+  mode: z.enum(['blocklist', 'allowlist']).default('blocklist'),
+  countries: z.array(z.string().length(2)).default([]),
 });
 
 export const ruleParamsSchema = z.union([
@@ -218,6 +264,7 @@ export const updateSettingsSchema = z.object({
   customWebhookUrl: z.url().nullable().optional(),
   webhookFormat: webhookFormatSchema.nullable().optional(),
   ntfyTopic: z.string().max(200).nullable().optional(),
+  ntfyAuthToken: z.string().max(500).nullable().optional(),
   // Poller settings
   pollerEnabled: z.boolean().optional(),
   pollerIntervalMs: z.number().int().min(5000).max(300000).optional(),
@@ -243,6 +290,7 @@ export type CallbackInput = z.infer<typeof callbackSchema>;
 export type CreateServerInput = z.infer<typeof createServerSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type SessionQueryInput = z.infer<typeof sessionQuerySchema>;
+export type HistoryQueryInput = z.infer<typeof historyQuerySchema>;
 export type CreateRuleInput = z.infer<typeof createRuleSchema>;
 export type UpdateRuleInput = z.infer<typeof updateRuleSchema>;
 export type ViolationQueryInput = z.infer<typeof violationQuerySchema>;

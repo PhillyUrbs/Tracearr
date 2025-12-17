@@ -30,6 +30,7 @@ export type {
   SimultaneousLocationsParams,
   DeviceVelocityParams,
   ConcurrentStreamsParams,
+  GeoRestrictionMode,
   GeoRestrictionParams,
   RuleParams,
   Rule,
@@ -68,6 +69,12 @@ export type {
   // API
   PaginatedResponse,
   ApiError,
+  // History page types
+  HistoryAggregates,
+  HistorySessionResponse,
+  FilterOptionItem,
+  UserFilterOption,
+  HistoryFilterOptions,
   // Mobile
   MobileToken,
   MobileSession,
@@ -118,6 +125,7 @@ export {
   userIdParamSchema,
   // Session
   sessionQuerySchema,
+  historyQuerySchema,
   sessionIdParamSchema,
   terminateSessionBodySchema,
   // Rule
@@ -151,6 +159,7 @@ export type {
   UpdateUserInput,
   UpdateUserIdentityInput,
   SessionQueryInput,
+  HistoryQueryInput,
   CreateRuleInput,
   UpdateRuleInput,
   ViolationQueryInput,
