@@ -87,7 +87,7 @@ export const TautulliHistoryRecordSchema = z.object({
   group_count: z.number().nullable(),
   group_ids: z.string().nullable(),
   state: z.string().nullable(),
-  session_key: z.union([z.coerce.number(), z.null()]), // Can be string, number, or null
+  session_key: z.union([z.null(), z.coerce.number()]), // Null first, then coerce string/number
 });
 
 export const TautulliHistoryResponseSchema = z.object({
