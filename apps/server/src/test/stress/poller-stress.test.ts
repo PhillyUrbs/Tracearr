@@ -86,7 +86,7 @@ describe('Poller Stress Test', () => {
         role: 'member',
       })
       .returning();
-    testUserId = user.id;
+    testUserId = user!.id;
 
     // Create test server
     const [server] = await db
@@ -98,7 +98,7 @@ describe('Poller Stress Test', () => {
         token: 'test-token',
       })
       .returning();
-    testServerId = server.id;
+    testServerId = server!.id;
 
     // Create test server user
     const [serverUser] = await db
@@ -110,7 +110,7 @@ describe('Poller Stress Test', () => {
         username: 'stress-test-user',
       })
       .returning();
-    testServerUserId = serverUser.id;
+    testServerUserId = serverUser!.id;
 
     // Populate with historical sessions (stopped sessions)
     console.log(`   Creating ${CONFIG.HISTORICAL_SESSIONS} historical sessions...`);
