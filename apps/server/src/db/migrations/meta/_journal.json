@@ -162,6 +162,13 @@
       "when": 1766069771193,
       "tag": "0022_pink_scorpion",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1766200941227,
+      "tag": "0023_thankful_ultragirl",
+      "breakpoints": true
     }
   ]
 }
