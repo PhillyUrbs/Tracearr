@@ -18,6 +18,8 @@ export interface RuleEvaluationResult {
   violated: boolean;
   severity: ViolationSeverity;
   data: Record<string, unknown>;
+  /** Issue #67: Include the rule that produced this result for correct violation attribution */
+  rule?: Rule;
 }
 
 export class RuleEngine {
@@ -39,7 +41,8 @@ export class RuleEngine {
 
       const result = await this.evaluateRule(rule, session, recentSessions);
       if (result.violated) {
-        results.push(result);
+        // Issue #67: Include the rule that produced this result for correct violation attribution
+        results.push({ ...result, rule });
       }
     }
 
@@ -95,7 +98,9 @@ export class RuleEngine {
         s.geoLat !== null &&
         s.geoLon !== null &&
         session.geoLat !== null &&
-        session.geoLon !== null
+        session.geoLon !== null &&
+        // Issue #67: Exclude same device - VPN switches on same device are not impossible travel
+        !(session.deviceId && s.deviceId && session.deviceId === s.deviceId)
     );
 
     for (const prevSession of userSessions) {
@@ -141,6 +146,8 @@ export class RuleEngine {
       (s) =>
         s.serverUserId === session.serverUserId &&
         s.state === 'playing' &&
+        // Issue #67: Exclude stopped sessions (stoppedAt takes precedence over state)
+        s.stoppedAt === null &&
         s.geoLat !== null &&
         s.geoLon !== null &&
         session.geoLat !== null &&
@@ -236,6 +243,9 @@ export class RuleEngine {
       (s) =>
         s.serverUserId === session.serverUserId &&
         s.state === 'playing' &&
+        // Issue #67: Exclude stopped sessions (stoppedAt takes precedence over state)
+        // This handles stale snapshot bug where state='playing' but session was stopped
+        s.stoppedAt === null &&
         // Exclude sessions from the same device (likely reconnects/stale sessions)
         // A single device can only play one stream at a time
         !(session.deviceId && s.deviceId && session.deviceId === s.deviceId)

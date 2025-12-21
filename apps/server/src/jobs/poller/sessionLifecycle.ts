@@ -427,31 +427,30 @@ export async function createSessionWithRulesAtomic(
     // Create violations within same transaction
     const createdViolations: ViolationInsertResult[] = [];
     for (const result of ruleResults) {
-      if (result.violated) {
-        const matchingRule = activeRules.find((r: Rule) => doesRuleApplyToUser(r, serverUser.id));
-        if (matchingRule) {
-          const relatedSessionIds = (result.data?.relatedSessionIds as string[]) || [];
-          const isDuplicate = await isDuplicateViolation(
-            serverUser.id,
-            matchingRule.type,
-            inserted.id,
-            relatedSessionIds
-          );
+      // Issue #67: Use result.rule directly instead of .find() to get correct rule attribution
+      if (result.violated && result.rule) {
+        const matchingRule = result.rule;
+        const relatedSessionIds = (result.data?.relatedSessionIds as string[]) || [];
+        const isDuplicate = await isDuplicateViolation(
+          serverUser.id,
+          matchingRule.type,
+          inserted.id,
+          relatedSessionIds
+        );
 
-          if (isDuplicate) {
-            continue;
-          }
-
-          const violationResult = await createViolationInTransaction(
-            tx,
-            matchingRule.id,
-            serverUser.id,
-            inserted.id,
-            result,
-            matchingRule
-          );
-          createdViolations.push(violationResult);
+        if (isDuplicate) {
+          continue;
         }
+
+        const violationResult = await createViolationInTransaction(
+          tx,
+          matchingRule.id,
+          serverUser.id,
+          inserted.id,
+          result,
+          matchingRule
+        );
+        createdViolations.push(violationResult);
       }
     }
 
