@@ -227,6 +227,8 @@ export interface DeviceVelocityParams {
   windowHours: number;
   /** When true, exclude private/local network IPs (192.168.x.x, 10.x.x.x, etc.) from unique IP count */
   excludePrivateIps?: boolean;
+  /** When true, count by deviceId instead of IP - same device with different IPs counts as 1 */
+  groupByDevice?: boolean;
 }
 
 export interface ConcurrentStreamsParams {

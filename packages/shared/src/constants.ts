@@ -17,6 +17,7 @@ export const RULE_DEFAULTS = {
     maxIps: 5,
     windowHours: 24,
     excludePrivateIps: false,
+    groupByDevice: false,
   },
   concurrent_streams: {
     maxStreams: 3,

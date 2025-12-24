@@ -78,7 +78,7 @@ const RULE_TYPES: { value: RuleType; label: string; icon: React.ReactNode; descr
 const DEFAULT_PARAMS: Record<RuleType, RuleParams> = {
   impossible_travel: { maxSpeedKmh: 500, excludePrivateIps: false },
   simultaneous_locations: { minDistanceKm: 100, excludePrivateIps: false },
-  device_velocity: { maxIps: 5, windowHours: 24, excludePrivateIps: false },
+  device_velocity: { maxIps: 5, windowHours: 24, excludePrivateIps: false, groupByDevice: false },
   concurrent_streams: { maxStreams: 3, excludePrivateIps: false },
   geo_restriction: { mode: 'blocklist', countries: [], excludePrivateIps: false },
 };
@@ -249,7 +249,9 @@ function RuleParamsForm({
         </div>
       );
     }
-    case 'device_velocity':
+    case 'device_velocity': {
+      const groupByDevice =
+        (params as { groupByDevice?: boolean }).groupByDevice ?? false;
       return (
         <div className="space-y-4">
           <div className="space-y-2">
@@ -277,12 +279,29 @@ function RuleParamsForm({
           <p className="text-muted-foreground text-xs">
             Maximum unique IPs allowed within the time window. Default: 5 IPs in 24 hours
           </p>
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="groupByDevice" className="text-sm font-medium">
+                Group by Device
+              </Label>
+              <p className="text-muted-foreground text-xs">
+                Count by device instead of IP. Prevents false positives from VPN, DHCP, or Virtual
+                Channels.
+              </p>
+            </div>
+            <Switch
+              id="groupByDevice"
+              checked={groupByDevice}
+              onCheckedChange={(checked) => onChange({ ...params, groupByDevice: checked })}
+            />
+          </div>
           <ExcludePrivateIpsToggle
             checked={excludePrivateIps}
             onCheckedChange={(checked) => onChange({ ...params, excludePrivateIps: checked })}
           />
         </div>
       );
+    }
     case 'concurrent_streams':
       return (
         <div className="space-y-4">

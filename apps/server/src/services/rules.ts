@@ -277,25 +277,47 @@ export class RuleEngine {
       (s) => s.serverUserId === session.serverUserId && s.startedAt >= windowStart
     );
 
-    // Issue #82: Collect all IPs, optionally filtering out private IPs
-    const allIps = userSessions.map((s) => s.ipAddress);
-    // Only add current session IP if not excluded
+    const allSessions = [...userSessions];
     if (!this.shouldExcludeSession(session, params.excludePrivateIps)) {
-      allIps.push(session.ipAddress);
+      allSessions.push(session);
     }
 
-    const filteredIps = this.filterPrivateIps(allIps, params.excludePrivateIps);
-    const uniqueIps = new Set(filteredIps);
+    let uniqueSources: Set<string>;
+    const uniqueIps = new Set<string>();
 
-    if (uniqueIps.size > params.maxIps) {
+    if (params.groupByDevice) {
+      // Group by deviceId - each device counts as 1 source regardless of IP changes
+      uniqueSources = new Set<string>();
+
+      for (const s of allSessions) {
+        if (params.excludePrivateIps && geoipService.isPrivateIP(s.ipAddress)) {
+          continue;
+        }
+
+        const sourceKey = s.deviceId ?? `ip:${s.ipAddress}`;
+        uniqueSources.add(sourceKey);
+        uniqueIps.add(s.ipAddress);
+      }
+    } else {
+      const allIps = allSessions.map((s) => s.ipAddress);
+      const filteredIps = this.filterPrivateIps(allIps, params.excludePrivateIps);
+
+      for (const ip of filteredIps) {
+        uniqueIps.add(ip);
+      }
+      uniqueSources = uniqueIps;
+    }
+
+    if (uniqueSources.size > params.maxIps) {
       return {
         violated: true,
         severity: 'warning',
         data: {
-          uniqueIpCount: uniqueIps.size,
+          uniqueIpCount: uniqueSources.size,
           maxAllowedIps: params.maxIps,
           windowHours: params.windowHours,
           ips: Array.from(uniqueIps),
+          ...(params.groupByDevice && { groupedByDevice: true }),
         },
       };
     }
