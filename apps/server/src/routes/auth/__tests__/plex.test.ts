@@ -56,8 +56,8 @@ import { plexRoutes } from '../plex.js';
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
-// Helper to create DB chain mocks
-function mockDbSelectWhere(result: unknown[]) {
+// Helper to create DB chain mocks (prefixed with _ as they're utility functions for future tests)
+function _mockDbSelectWhere(result: unknown[]) {
   const chain = {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockResolvedValue(result),
@@ -67,7 +67,7 @@ function mockDbSelectWhere(result: unknown[]) {
 }
 
 // For queries that end with .limit()
-function mockDbSelectLimit(result: unknown[]) {
+function _mockDbSelectLimit(result: unknown[]) {
   const chain = {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
@@ -76,6 +76,10 @@ function mockDbSelectLimit(result: unknown[]) {
   vi.mocked(db.select).mockReturnValue(chain as never);
   return chain;
 }
+
+// Export to prevent unused warnings while keeping them available
+void _mockDbSelectWhere;
+void _mockDbSelectLimit;
 
 function mockDbInsert(result: unknown[]) {
   const chain = {
