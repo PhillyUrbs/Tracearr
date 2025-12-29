@@ -59,6 +59,7 @@ import { PlexServerSelector } from '@/components/auth/PlexServerSelector';
 import { NotificationRoutingMatrix } from '@/components/settings/NotificationRoutingMatrix';
 import { AppearanceSettings } from '@/components/settings/AppearanceSettings';
 import { JobsSettings } from '@/components/settings/JobsSettings';
+import { PlexAccountsManager } from '@/components/settings/PlexAccountsManager';
 import { ImportProgressCard, FileDropzone, type ImportProgressData } from '@/components/import';
 import type {
   Server,
@@ -237,10 +238,14 @@ function ServerSettings() {
 
   // Plex server discovery state
   const [plexDialogStep, setPlexDialogStep] = useState<
-    'loading' | 'no-plex' | 'no-servers' | 'select'
+    'loading' | 'no-accounts' | 'select-account' | 'loading-servers' | 'no-servers' | 'select'
   >('loading');
   const [plexServers, setPlexServers] = useState<PlexDiscoveredServer[]>([]);
   const [connectingPlexServer, setConnectingPlexServer] = useState<string | null>(null);
+
+  // Plex account selection state
+  const [plexAccounts, setPlexAccounts] = useState<{ id: string; plexUsername: string | null; plexEmail: string | null }[]>([]);
+  const [selectedPlexAccountId, setSelectedPlexAccountId] = useState<string | null>(null);
 
   // Update server type when user data loads (non-owners can't add Plex)
   useEffect(() => {
@@ -249,10 +254,10 @@ function ServerSettings() {
     }
   }, [user, serverType]);
 
-  // Fetch Plex servers when dialog opens with Plex selected
+  // Fetch Plex accounts when dialog opens with Plex selected
   useEffect(() => {
     if (showAddDialog && serverType === 'plex' && user?.role === 'owner') {
-      void fetchPlexServers();
+      void fetchPlexAccounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only trigger on dialog open, not serverType changes
   }, [showAddDialog]);
@@ -288,18 +293,51 @@ function ServerSettings() {
     setPlexDialogStep('loading');
     setPlexServers([]);
     setConnectingPlexServer(null);
+    setPlexAccounts([]);
+    setSelectedPlexAccountId(null);
   };
 
-  // Fetch available Plex servers when dialog opens with Plex selected
-  const fetchPlexServers = async () => {
+  // Fetch linked Plex accounts
+  const fetchPlexAccounts = async () => {
     setPlexDialogStep('loading');
     setConnectError(null);
 
     try {
-      const result = await api.auth.getAvailablePlexServers();
+      const result = await api.auth.getPlexAccounts();
+      const accounts = result.accounts;
+
+      if (accounts.length === 0) {
+        setPlexDialogStep('no-accounts');
+        return;
+      }
+
+      setPlexAccounts(accounts);
+
+      // If only one account, auto-select and fetch servers
+      const firstAccount = accounts[0];
+      if (accounts.length === 1 && firstAccount) {
+        setSelectedPlexAccountId(firstAccount.id);
+        await fetchPlexServers(firstAccount.id);
+      } else {
+        // Multiple accounts - show account selector
+        setPlexDialogStep('select-account');
+      }
+    } catch (error) {
+      setConnectError(error instanceof Error ? error.message : 'Failed to fetch Plex accounts');
+      setPlexDialogStep('no-accounts');
+    }
+  };
+
+  // Fetch available Plex servers for a specific account
+  const fetchPlexServers = async (accountId?: string) => {
+    setPlexDialogStep('loading-servers');
+    setConnectError(null);
+
+    try {
+      const result = await api.auth.getAvailablePlexServers(accountId);
 
       if (!result.hasPlexToken) {
-        setPlexDialogStep('no-plex');
+        setPlexDialogStep('no-accounts');
         return;
       }
 
@@ -312,7 +350,7 @@ function ServerSettings() {
       setPlexDialogStep('select');
     } catch (error) {
       setConnectError(error instanceof Error ? error.message : 'Failed to fetch Plex servers');
-      setPlexDialogStep('no-plex');
+      setPlexDialogStep('no-servers');
     }
   };
 
@@ -330,6 +368,7 @@ function ServerSettings() {
         serverUri,
         serverName: name,
         clientIdentifier,
+        accountId: selectedPlexAccountId ?? undefined,
       });
 
       toast.success('Server Added', { description: `${name} has been connected successfully` });
@@ -456,6 +495,21 @@ function ServerSettings() {
         </CardContent>
       </Card>
 
+      {/* Plex Accounts Management - Only for owners */}
+      {user?.role === 'owner' && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Linked Plex Accounts</CardTitle>
+            <CardDescription>
+              Manage the Plex accounts you can add servers from
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PlexAccountsManager onAccountLinked={() => void fetchPlexServers()} />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Add Server Dialog */}
       <Dialog
         open={showAddDialog}
@@ -486,9 +540,9 @@ function ServerSettings() {
                   const newType = v as 'plex' | 'jellyfin' | 'emby';
                   setServerType(newType);
                   setConnectError(null);
-                  // Fetch Plex servers when switching to Plex type
+                  // Fetch Plex accounts when switching to Plex type
                   if (newType === 'plex' && user?.role === 'owner') {
-                    void fetchPlexServers();
+                    void fetchPlexAccounts();
                   }
                 }}
               >
@@ -510,44 +564,132 @@ function ServerSettings() {
                   <div className="flex flex-col items-center justify-center gap-3 py-8">
                     <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
                     <p className="text-muted-foreground text-sm">
-                      Discovering available Plex servers...
+                      Loading linked Plex accounts...
                     </p>
                   </div>
                 )}
 
-                {plexDialogStep === 'no-plex' && (
+                {plexDialogStep === 'no-accounts' && (
                   <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
                     <AlertTriangle className="h-8 w-8 text-amber-500" />
                     <div>
-                      <p className="font-medium">No Plex Account Linked</p>
+                      <p className="font-medium">No Plex Accounts Linked</p>
                       <p className="text-muted-foreground mt-1 text-sm">
-                        You need to have at least one Plex server connected to add more.
+                        Link a Plex account first using the &quot;Linked Plex Accounts&quot; section below.
                       </p>
                     </div>
                     {connectError && <p className="text-destructive text-sm">{connectError}</p>}
                   </div>
                 )}
 
-                {plexDialogStep === 'no-servers' && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
-                    <ServerIcon className="text-muted-foreground h-8 w-8" />
-                    <div>
-                      <p className="font-medium">All Servers Connected</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        All your owned Plex servers are already connected to Tracearr.
+                {plexDialogStep === 'select-account' && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Select Plex Account</Label>
+                      <Select
+                        value={selectedPlexAccountId ?? ''}
+                        onValueChange={(id) => {
+                          setSelectedPlexAccountId(id);
+                          void fetchPlexServers(id);
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose an account..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {plexAccounts.map((account) => (
+                            <SelectItem key={account.id} value={account.id}>
+                              {account.plexUsername ?? account.plexEmail ?? 'Plex Account'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-muted-foreground text-xs">
+                        You have {plexAccounts.length} Plex accounts linked. Select which one to add a server from.
                       </p>
                     </div>
                   </div>
                 )}
 
+                {plexDialogStep === 'loading-servers' && (
+                  <div className="flex flex-col items-center justify-center gap-3 py-8">
+                    <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+                    <p className="text-muted-foreground text-sm">
+                      Discovering available Plex servers...
+                    </p>
+                  </div>
+                )}
+
+                {plexDialogStep === 'no-servers' && (
+                  <div className="space-y-4">
+                    {plexAccounts.length > 1 && (
+                      <div className="space-y-2">
+                        <Label>Plex Account</Label>
+                        <Select
+                          value={selectedPlexAccountId ?? ''}
+                          onValueChange={(id) => {
+                            setSelectedPlexAccountId(id);
+                            void fetchPlexServers(id);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {plexAccounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.plexUsername ?? account.plexEmail ?? 'Plex Account'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <div className="flex flex-col items-center justify-center gap-3 py-8 text-center">
+                      <ServerIcon className="text-muted-foreground h-8 w-8" />
+                      <div>
+                        <p className="font-medium">All Servers Connected</p>
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          All your owned Plex servers from this account are already connected to Tracearr.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {plexDialogStep === 'select' && (
-                  <PlexServerSelector
-                    servers={plexServers}
-                    onSelect={handlePlexServerSelect}
-                    connecting={connectingPlexServer !== null}
-                    connectingToServer={connectingPlexServer}
-                    showCancel={false}
-                  />
+                  <div className="space-y-4">
+                    {plexAccounts.length > 1 && (
+                      <div className="space-y-2">
+                        <Label>Plex Account</Label>
+                        <Select
+                          value={selectedPlexAccountId ?? ''}
+                          onValueChange={(id) => {
+                            setSelectedPlexAccountId(id);
+                            void fetchPlexServers(id);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {plexAccounts.map((account) => (
+                              <SelectItem key={account.id} value={account.id}>
+                                {account.plexUsername ?? account.plexEmail ?? 'Plex Account'}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    <PlexServerSelector
+                      servers={plexServers}
+                      onSelect={handlePlexServerSelect}
+                      connecting={connectingPlexServer !== null}
+                      connectingToServer={connectingPlexServer}
+                      showCancel={false}
+                    />
+                  </div>
                 )}
 
                 {connectError && plexDialogStep === 'select' && (

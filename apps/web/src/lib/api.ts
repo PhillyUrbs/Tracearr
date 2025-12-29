@@ -25,6 +25,10 @@ import type {
   PlexDiscoveredServer,
   PlexDiscoveredConnection,
   PlexAvailableServersResponse,
+  PlexAccount,
+  PlexAccountsResponse,
+  LinkPlexAccountResponse,
+  UnlinkPlexAccountResponse,
   NotificationChannelRouting,
   NotificationEventType,
   HistorySessionResponse,
@@ -34,7 +38,13 @@ import type {
 } from '@tracearr/shared';
 
 // Re-export shared types needed by frontend components
-export type { PlexDiscoveredServer, PlexDiscoveredConnection, PlexAvailableServersResponse };
+export type {
+  PlexDiscoveredServer,
+  PlexDiscoveredConnection,
+  PlexAvailableServersResponse,
+  PlexAccount,
+  PlexAccountsResponse,
+};
 import { API_BASE_PATH, getClientTimezone } from '@tracearr/shared';
 
 // Stats time range parameters
@@ -331,11 +341,18 @@ class ApiClient {
       ),
 
     // Get available Plex servers (authenticated - for adding additional servers)
-    getAvailablePlexServers: () =>
-      this.request<PlexAvailableServersResponse>('/auth/plex/available-servers'),
+    getAvailablePlexServers: (accountId?: string) => {
+      const params = accountId ? `?accountId=${accountId}` : '';
+      return this.request<PlexAvailableServersResponse>(`/auth/plex/available-servers${params}`);
+    },
 
     // Add an additional Plex server (authenticated - owner only)
-    addPlexServer: (data: { serverUri: string; serverName: string; clientIdentifier: string }) =>
+    addPlexServer: (data: {
+      serverUri: string;
+      serverName: string;
+      clientIdentifier: string;
+      accountId?: string;
+    }) =>
       this.request<{ server: Server; usersAdded: number; librariesSynced: number }>(
         '/auth/plex/add-server',
         {
@@ -343,6 +360,22 @@ class ApiClient {
           body: JSON.stringify(data),
         }
       ),
+
+    // Get linked Plex accounts (authenticated - owner only)
+    getPlexAccounts: () => this.request<PlexAccountsResponse>('/auth/plex/accounts'),
+
+    // Link a new Plex account via OAuth PIN (authenticated - owner only)
+    linkPlexAccount: (pin: string) =>
+      this.request<LinkPlexAccountResponse>('/auth/plex/link-account', {
+        method: 'POST',
+        body: JSON.stringify({ pin }),
+      }),
+
+    // Unlink a Plex account (authenticated - owner only)
+    unlinkPlexAccount: (id: string) =>
+      this.request<UnlinkPlexAccountResponse>(`/auth/plex/accounts/${id}`, {
+        method: 'DELETE',
+      }),
 
     // Jellyfin server connection with API key (requires auth)
     connectJellyfinWithApiKey: (data: { serverUrl: string; serverName: string; apiKey: string }) =>

@@ -114,6 +114,12 @@ export type {
   PlexDiscoveredConnection,
   PlexDiscoveredServer,
   PlexAvailableServersResponse,
+  // Plex account management
+  PlexAccount,
+  PlexAccountsResponse,
+  LinkPlexAccountRequest,
+  LinkPlexAccountResponse,
+  UnlinkPlexAccountResponse,
   // Version
   VersionInfo,
 } from './types.js';

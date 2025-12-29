@@ -21,6 +21,7 @@ import {
   notificationPreferences,
   notificationChannelRouting,
   terminationLogs,
+  plexAccounts,
 } from '../db/schema.js';
 
 export const debugRoutes: FastifyPluginAsync = async (app) => {
@@ -178,8 +179,9 @@ export const debugRoutes: FastifyPluginAsync = async (app) => {
     await db.delete(mobileSessions);
     await db.delete(mobileTokens);
     await db.delete(serverUsers);
+    await db.delete(servers); // servers references plex_accounts
+    await db.delete(plexAccounts); // plex_accounts references users
     await db.delete(users);
-    await db.delete(servers);
 
     // Reset settings to defaults
     await db

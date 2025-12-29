@@ -1032,6 +1032,42 @@ export interface PlexAvailableServersResponse {
 }
 
 // =============================================================================
+// Plex Account Types (Multi-Account Support)
+// =============================================================================
+
+// Linked Plex account (for server discovery and management)
+export interface PlexAccount {
+  id: string;
+  plexAccountId: string; // Plex.tv account ID
+  plexUsername: string | null;
+  plexEmail: string | null;
+  plexThumbnail: string | null;
+  allowLogin: boolean; // Whether this account can be used for authentication
+  serverCount: number; // Number of Tracearr servers linked to this account
+  createdAt: Date;
+}
+
+// Response from GET /auth/plex/accounts
+export interface PlexAccountsResponse {
+  accounts: PlexAccount[];
+}
+
+// Request body for POST /auth/plex/link-account
+export interface LinkPlexAccountRequest {
+  pin: string; // Plex OAuth PIN
+}
+
+// Response from POST /auth/plex/link-account
+export interface LinkPlexAccountResponse {
+  account: PlexAccount;
+}
+
+// Response from DELETE /auth/plex/accounts/:id
+export interface UnlinkPlexAccountResponse {
+  success: boolean;
+}
+
+// =============================================================================
 // Maintenance Job Types
 // =============================================================================
 
