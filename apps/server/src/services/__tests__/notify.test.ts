@@ -221,7 +221,7 @@ describe('NotificationService', () => {
       const callArgs = mockFetch.mock.calls[0]!;
       const body = JSON.parse(callArgs[1].body);
       expect(body.title).toBe('Violation Detected');
-      expect(body.body).toContain('testuser');
+      expect(body.body).toContain('Test User'); // Uses identityName when available
       expect(body.type).toBe('warning');
     });
 

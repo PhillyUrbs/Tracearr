@@ -1114,6 +1114,7 @@ export interface VersionInfo {
     tag: string | null; // Docker tag (e.g., "latest", "stable", "v1.3.8")
     commit: string | null; // Git commit SHA (short)
     buildDate: string | null; // ISO date of build
+    isPrerelease: boolean; // Whether current version is a prerelease (beta, alpha, rc)
   };
   // Latest available version (null if check hasn't run yet)
   latest: {
@@ -1121,6 +1122,9 @@ export interface VersionInfo {
     tag: string;
     releaseUrl: string;
     publishedAt: string;
+    isPrerelease: boolean; // Whether this update is a prerelease
+    releaseName: string | null; // Release title from GitHub
+    releaseNotes: string | null; // Release body/notes from GitHub (markdown)
   } | null;
   // Update status
   updateAvailable: boolean;

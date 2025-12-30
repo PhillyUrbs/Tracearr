@@ -13,6 +13,7 @@ import {
   getBuildDate,
   getCachedLatestVersion,
   isNewerVersion,
+  isPrerelease,
   forceVersionCheck,
 } from '../jobs/versionCheckQueue.js';
 
@@ -42,6 +43,7 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
         tag: currentTag,
         commit: currentCommit,
         buildDate,
+        isPrerelease: isPrerelease(currentVersion),
       },
       latest: latestData
         ? {
@@ -49,6 +51,9 @@ export const versionRoutes: FastifyPluginAsync = async (app) => {
             tag: latestData.tag,
             releaseUrl: latestData.releaseUrl,
             publishedAt: latestData.publishedAt,
+            isPrerelease: latestData.isPrerelease,
+            releaseName: latestData.releaseName,
+            releaseNotes: latestData.releaseNotes,
           }
         : null,
       updateAvailable,

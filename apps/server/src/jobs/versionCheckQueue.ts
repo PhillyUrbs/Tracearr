@@ -13,8 +13,12 @@ import { REDIS_KEYS, CACHE_TTL, WS_EVENTS } from '@tracearr/shared';
 const QUEUE_NAME = 'version-check';
 
 // GitHub API configuration
-const GITHUB_API_URL = 'https://api.github.com/repos/connorgallopo/Tracearr/releases/latest';
+const GITHUB_API_LATEST_URL = 'https://api.github.com/repos/connorgallopo/Tracearr/releases/latest';
+const GITHUB_API_ALL_RELEASES_URL = 'https://api.github.com/repos/connorgallopo/Tracearr/releases';
 const GITHUB_RELEASES_URL = 'https://github.com/connorgallopo/Tracearr/releases';
+
+// Prerelease identifier patterns (beta, alpha, rc, etc.)
+const PRERELEASE_PATTERN = /-(alpha|beta|rc|next|dev|canary)\.?\d*$/i;
 
 // Job types
 interface VersionCheckJobData {
@@ -29,6 +33,9 @@ export interface LatestVersionData {
   releaseUrl: string;
   publishedAt: string;
   checkedAt: string;
+  isPrerelease: boolean;
+  releaseName: string | null;
+  releaseNotes: string | null;
 }
 
 // Connection options (set during initialization)
@@ -175,6 +182,89 @@ export async function forceVersionCheck(): Promise<void> {
   );
 }
 
+// GitHub release structure from API
+interface GitHubRelease {
+  tag_name: string;
+  html_url: string;
+  published_at: string;
+  name: string;
+  body: string | null;
+  prerelease: boolean;
+  draft: boolean;
+}
+
+/**
+ * Fetch releases from GitHub API
+ */
+async function fetchGitHubReleases(url: string): Promise<GitHubRelease[] | GitHubRelease | null> {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'Tracearr-Version-Check',
+    },
+  });
+
+  if (!response.ok) {
+    // Handle rate limiting gracefully
+    if (response.status === 403 || response.status === 429) {
+      const retryAfter = response.headers.get('retry-after');
+      console.warn(`GitHub rate limit hit, retry after ${retryAfter ?? 'unknown'}s`);
+      throw new Error('GitHub rate limit exceeded');
+    }
+
+    // 404 means no releases yet - not an error
+    if (response.status === 404) {
+      console.log('No releases found on GitHub');
+      return null;
+    }
+
+    throw new Error(`GitHub API returned ${response.status}`);
+  }
+
+  return response.json() as Promise<GitHubRelease[] | GitHubRelease>;
+}
+
+/**
+ * Find the best update target for a prerelease user
+ * Priority:
+ * 1. Stable release of the same base version (beta.4 -> stable 1.3.9)
+ * 2. Newer prerelease of the same line (beta.1 -> beta.2)
+ * 3. Newer major/minor stable release
+ */
+function findBestUpdateForPrerelease(
+  currentVersion: string,
+  releases: GitHubRelease[]
+): GitHubRelease | null {
+  const current = parseVersion(currentVersion);
+
+  // Filter out drafts and sort by version (newest first)
+  const validReleases = releases
+    .filter((r) => !r.draft)
+    .sort((a, b) => compareVersions(b.tag_name, a.tag_name));
+
+  // First: Look for stable release of same base version
+  const stableOfSameBase = validReleases.find((r) => {
+    if (r.prerelease) return false;
+    const releaseVersion = parseVersion(r.tag_name);
+    return (
+      releaseVersion.major === current.major &&
+      releaseVersion.minor === current.minor &&
+      releaseVersion.patch === current.patch
+    );
+  });
+
+  if (stableOfSameBase) {
+    return stableOfSameBase;
+  }
+
+  // Second: Look for any newer release (stable or prerelease)
+  const newerRelease = validReleases.find((r) => {
+    return compareVersions(r.tag_name, currentVersion) > 0;
+  });
+
+  return newerRelease ?? null;
+}
+
 /**
  * Process a version check job
  */
@@ -186,47 +276,57 @@ async function processVersionCheck(job: Job<VersionCheckJobData>): Promise<void>
   console.log(`Processing version check (job ${job.id}, force=${job.data.force ?? false})`);
 
   try {
-    // Fetch latest release from GitHub
-    const response = await fetch(GITHUB_API_URL, {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'Tracearr-Version-Check',
-      },
-    });
+    const currentVersion = getCurrentVersion();
+    const currentIsPrerelease = isPrerelease(currentVersion);
 
-    if (!response.ok) {
-      // Handle rate limiting gracefully
-      if (response.status === 403 || response.status === 429) {
-        const retryAfter = response.headers.get('retry-after');
-        console.warn(`GitHub rate limit hit, retry after ${retryAfter ?? 'unknown'}s`);
-        throw new Error('GitHub rate limit exceeded');
-      }
+    console.log(
+      `Current version: ${currentVersion} (prerelease: ${currentIsPrerelease})`
+    );
 
-      // 404 means no releases yet - not an error
-      if (response.status === 404) {
-        console.log('No releases found on GitHub');
+    let targetRelease: GitHubRelease | null = null;
+
+    if (currentIsPrerelease) {
+      // For prerelease users, fetch all releases to find the best update
+      const releases = await fetchGitHubReleases(
+        `${GITHUB_API_ALL_RELEASES_URL}?per_page=30`
+      );
+
+      if (!releases || !Array.isArray(releases)) {
+        console.log('No releases found or invalid response');
         return;
       }
 
-      throw new Error(`GitHub API returned ${response.status}`);
+      targetRelease = findBestUpdateForPrerelease(currentVersion, releases);
+    } else {
+      // For stable users, just check the latest stable release
+      const release = await fetchGitHubReleases(GITHUB_API_LATEST_URL);
+
+      if (!release || Array.isArray(release)) {
+        console.log('No latest release found');
+        return;
+      }
+
+      targetRelease = release;
     }
 
-    const release = (await response.json()) as {
-      tag_name: string;
-      html_url: string;
-      published_at: string;
-      name: string;
-    };
+    if (!targetRelease) {
+      console.log('No update target found');
+      return;
+    }
 
     // Parse version from tag (remove 'v' prefix if present)
-    const version = release.tag_name.replace(/^v/, '');
+    const version = targetRelease.tag_name.replace(/^v/, '');
 
     const latestData: LatestVersionData = {
       version,
-      tag: release.tag_name,
-      releaseUrl: release.html_url || `${GITHUB_RELEASES_URL}/tag/${release.tag_name}`,
-      publishedAt: release.published_at,
+      tag: targetRelease.tag_name,
+      releaseUrl:
+        targetRelease.html_url || `${GITHUB_RELEASES_URL}/tag/${targetRelease.tag_name}`,
+      publishedAt: targetRelease.published_at,
       checkedAt: new Date().toISOString(),
+      isPrerelease: targetRelease.prerelease,
+      releaseName: targetRelease.name || null,
+      releaseNotes: targetRelease.body || null,
     };
 
     // Cache in Redis
@@ -237,10 +337,9 @@ async function processVersionCheck(job: Job<VersionCheckJobData>): Promise<void>
       CACHE_TTL.VERSION_CHECK
     );
 
-    console.log(`Latest version cached: ${version} (tag: ${release.tag_name})`);
+    console.log(`Latest version cached: ${version} (tag: ${targetRelease.tag_name})`);
 
-    // Get current version to check if update is available
-    const currentVersion = getCurrentVersion();
+    // Check if update is available
     const updateAvailable = isNewerVersion(version, currentVersion);
 
     if (updateAvailable && pubSubPublish) {
@@ -300,10 +399,136 @@ export async function getCachedLatestVersion(): Promise<LatestVersionData | null
   }
 
   try {
-    return JSON.parse(cached) as LatestVersionData;
+    const data = JSON.parse(cached) as Partial<LatestVersionData>;
+
+    // Ensure required fields exist (handles schema migration from older cache)
+    if (!data.version || !data.tag) {
+      return null;
+    }
+
+    // Provide defaults for new fields that may be missing from old cache
+    return {
+      version: data.version,
+      tag: data.tag,
+      releaseUrl: data.releaseUrl ?? '',
+      publishedAt: data.publishedAt ?? '',
+      checkedAt: data.checkedAt ?? new Date().toISOString(),
+      isPrerelease: data.isPrerelease ?? isPrerelease(data.tag),
+      releaseName: data.releaseName ?? null,
+      releaseNotes: data.releaseNotes ?? null,
+    };
   } catch {
     return null;
   }
+}
+
+/**
+ * Parsed semantic version with prerelease support
+ */
+interface ParsedVersion {
+  major: number;
+  minor: number;
+  patch: number;
+  prerelease: string | null; // e.g., "beta", "alpha", "rc"
+  prereleaseNum: number | null; // e.g., 3 for "beta.3"
+  isPrerelease: boolean;
+}
+
+/**
+ * Parse a semantic version string into components
+ * Handles: 1.3.9, v1.3.9, 1.3.9-beta.3, v1.4.0-rc.1
+ */
+export function parseVersion(version: string): ParsedVersion {
+  // Remove 'v' prefix
+  const v = version.replace(/^v/, '');
+
+  // Match: major.minor.patch(-prerelease.num)?
+  const match = v.match(/^(\d+)\.(\d+)\.(\d+)(?:-([a-zA-Z]+)(?:\.(\d+))?)?$/);
+
+  if (!match) {
+    // Fallback for malformed versions
+    return {
+      major: 0,
+      minor: 0,
+      patch: 0,
+      prerelease: null,
+      prereleaseNum: null,
+      isPrerelease: false,
+    };
+  }
+
+  const [, major = '0', minor = '0', patch = '0', prerelease, prereleaseNum] = match;
+
+  return {
+    major: parseInt(major, 10),
+    minor: parseInt(minor, 10),
+    patch: parseInt(patch, 10),
+    prerelease: prerelease ?? null,
+    prereleaseNum: prereleaseNum ? parseInt(prereleaseNum, 10) : null,
+    isPrerelease: !!prerelease,
+  };
+}
+
+/**
+ * Check if a version string represents a prerelease
+ */
+export function isPrerelease(version: string): boolean {
+  return PRERELEASE_PATTERN.test(version.replace(/^v/, ''));
+}
+
+/**
+ * Get the base version without prerelease suffix
+ * e.g., "1.3.9-beta.3" -> "1.3.9"
+ */
+export function getBaseVersion(version: string): string {
+  return version.replace(/^v/, '').replace(/-.*$/, '');
+}
+
+/**
+ * Compare two semantic versions with full prerelease support
+ * Returns: 1 if a > b, -1 if a < b, 0 if equal
+ *
+ * Ordering rules:
+ * - Higher major/minor/patch wins
+ * - Stable release > any prerelease of same base version (1.3.9 > 1.3.9-beta.99)
+ * - Prerelease ordering: alpha < beta < rc (then by number)
+ */
+export function compareVersions(a: string, b: string): number {
+  const vA = parseVersion(a);
+  const vB = parseVersion(b);
+
+  // Compare major.minor.patch
+  if (vA.major !== vB.major) return vA.major > vB.major ? 1 : -1;
+  if (vA.minor !== vB.minor) return vA.minor > vB.minor ? 1 : -1;
+  if (vA.patch !== vB.patch) return vA.patch > vB.patch ? 1 : -1;
+
+  // Same base version - check prerelease status
+  if (!vA.isPrerelease && !vB.isPrerelease) return 0; // Both stable
+  if (!vA.isPrerelease && vB.isPrerelease) return 1; // a is stable, b is prerelease
+  if (vA.isPrerelease && !vB.isPrerelease) return -1; // a is prerelease, b is stable
+
+  // Both are prereleases of same base version
+  const prereleaseOrder: Record<string, number> = {
+    dev: 0,
+    canary: 1,
+    alpha: 2,
+    beta: 3,
+    rc: 4,
+    next: 5,
+  };
+
+  const orderA = prereleaseOrder[vA.prerelease?.toLowerCase() ?? ''] ?? 3;
+  const orderB = prereleaseOrder[vB.prerelease?.toLowerCase() ?? ''] ?? 3;
+
+  if (orderA !== orderB) return orderA > orderB ? 1 : -1;
+
+  // Same prerelease type - compare numbers
+  const numA = vA.prereleaseNum ?? 0;
+  const numB = vB.prereleaseNum ?? 0;
+
+  if (numA !== numB) return numA > numB ? 1 : -1;
+
+  return 0;
 }
 
 /**
@@ -311,24 +536,7 @@ export async function getCachedLatestVersion(): Promise<LatestVersionData | null
  * Returns true if latest > current
  */
 export function isNewerVersion(latest: string, current: string): boolean {
-  const parseVersion = (v: string): [number, number, number] => {
-    const parts = v
-      .replace(/^v/, '')
-      .split('.')
-      .map((n) => parseInt(n, 10) || 0);
-    return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
-  };
-
-  const [latestMajor, latestMinor, latestPatch] = parseVersion(latest);
-  const [currentMajor, currentMinor, currentPatch] = parseVersion(current);
-
-  if (latestMajor > currentMajor) return true;
-  if (latestMajor < currentMajor) return false;
-  if (latestMinor > currentMinor) return true;
-  if (latestMinor < currentMinor) return false;
-  if (latestPatch > currentPatch) return true;
-
-  return false;
+  return compareVersions(latest, current) > 0;
 }
 
 /**

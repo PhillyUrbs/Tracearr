@@ -507,7 +507,7 @@ export class PushNotificationService {
       buildPushMessage(session.expoPushToken, session.deviceSecret, {
         title: serverName,
         subtitle: `${SEVERITY_LEVELS[severity].label} Violation`,
-        body: `${violation.user.username}: ${RULE_DISPLAY_NAMES[ruleType]}`,
+        body: `${violation.user.identityName ?? violation.user.username}: ${RULE_DISPLAY_NAMES[ruleType]}`,
         data: {
           type: 'violation_detected',
           violationId: violation.id,
@@ -571,7 +571,7 @@ export class PushNotificationService {
       buildPushMessage(s.expoPushToken, s.deviceSecret, {
         title: serverName,
         subtitle: 'Now Playing',
-        body: `${session.user.username}: ${formattedTitle}`,
+        body: `${session.user.identityName ?? session.user.username}: ${formattedTitle}`,
         data: {
           type: 'stream_started',
           sessionId: session.id,
@@ -640,7 +640,7 @@ export class PushNotificationService {
       buildPushMessage(s.expoPushToken, s.deviceSecret, {
         title: serverName,
         subtitle: 'Stream Ended',
-        body: `${session.user.username}: ${formattedTitle} (${durationStr})`,
+        body: `${session.user.identityName ?? session.user.username}: ${formattedTitle} (${durationStr})`,
         data: {
           type: 'stream_stopped',
           sessionId: session.id,

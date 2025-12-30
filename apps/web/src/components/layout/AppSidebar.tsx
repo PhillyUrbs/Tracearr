@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router';
-import { ChevronRight, ArrowUpCircle, ExternalLink } from 'lucide-react';
+import { ChevronRight, ArrowUpCircle } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Logo } from '@/components/brand/Logo';
 import { ServerSelector } from './ServerSelector';
 import { navigation, isNavGroup, type NavItem, type NavGroup } from './nav-data';
+import { UpdateDialog } from './UpdateDialog';
 import { cn } from '@/lib/utils';
 import { useVersion } from '@/hooks/queries';
 
@@ -86,6 +88,7 @@ function NavMenuGroup({ group }: { group: NavGroup }) {
 }
 
 function VersionDisplay() {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { data: version, isLoading } = useVersion();
 
   if (isLoading || !version) {
@@ -94,33 +97,59 @@ function VersionDisplay() {
 
   const displayVersion = version.current.tag ?? `v${version.current.version}`;
 
+  // Determine the update type label for the badge
+  const getUpdateLabel = () => {
+    if (!version.latest) return 'Update';
+    if (version.current.isPrerelease && !version.latest.isPrerelease) {
+      return 'Stable';
+    }
+    if (version.current.isPrerelease && version.latest.isPrerelease) {
+      return 'Beta';
+    }
+    return 'Update';
+  };
+
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-xs">{displayVersion}</span>
+    <>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-xs">
+            {displayVersion}
+            {version.current.isPrerelease && (
+              <span className="text-muted-foreground/60 ml-1">(beta)</span>
+            )}
+          </span>
+          {version.updateAvailable && version.latest && (
+            <Badge
+              variant="secondary"
+              className="h-5 cursor-pointer gap-1 bg-green-500/10 text-green-600 hover:bg-green-500/20 dark:text-green-400"
+              onClick={() => setDialogOpen(true)}
+            >
+              <ArrowUpCircle className="h-3 w-3" />
+              <span className="text-[10px]">{getUpdateLabel()}</span>
+            </Badge>
+          )}
+        </div>
         {version.updateAvailable && version.latest && (
-          <Badge
-            variant="secondary"
-            className="h-5 cursor-pointer gap-1 bg-green-500/10 text-green-600 hover:bg-green-500/20 dark:text-green-400"
-            onClick={() => window.open(version.latest!.releaseUrl, '_blank')}
+          <button
+            onClick={() => setDialogOpen(true)}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[10px] text-left transition-colors"
           >
-            <ArrowUpCircle className="h-3 w-3" />
-            <span className="text-[10px]">Update</span>
-          </Badge>
+            <span>
+              {version.latest.isPrerelease ? 'Beta' : 'Stable'} {version.latest.tag} available
+            </span>
+          </button>
         )}
       </div>
+
       {version.updateAvailable && version.latest && (
-        <a
-          href={version.latest.releaseUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-[10px] transition-colors"
-        >
-          <span>{version.latest.tag} available</span>
-          <ExternalLink className="h-2.5 w-2.5" />
-        </a>
+        <UpdateDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          version={version}
+        />
       )}
-    </div>
+    </>
   );
 }
 

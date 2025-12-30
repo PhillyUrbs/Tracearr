@@ -345,7 +345,7 @@ export class NotificationService {
       event: NOTIFICATION_EVENTS.VIOLATION_DETECTED,
       timestamp: violation.createdAt.toISOString(),
       data: {
-        user: { id: violation.serverUserId, username: violation.user.username },
+        user: { id: violation.serverUserId, username: violation.user.username, displayName: violation.user.identityName ?? violation.user.username },
         rule: { id: violation.ruleId, type: violation.rule.type, name: violation.rule.name },
         violation: { id: violation.id, severity: violation.severity, details: violation.data },
       },
@@ -369,7 +369,7 @@ export class NotificationService {
       title: `Sharing Violation Detected`,
       color: severityColors[severity] ?? 0x3498db,
       fields: [
-        { name: 'User', value: violation.user.username, inline: true },
+        { name: 'User', value: violation.user.identityName ?? violation.user.username, inline: true },
         { name: 'Rule', value: RULE_DISPLAY_NAMES[ruleType], inline: true },
         { name: 'Severity', value: SEVERITY_LEVELS[severity].label, inline: true },
         ...detailFields,
@@ -643,7 +643,7 @@ export class NotificationService {
       return {
         topic: ntfyTopic,
         title: 'Violation Detected',
-        message: `User ${violation.user.username} triggered ${RULE_DISPLAY_NAMES[ruleType]} (${SEVERITY_LEVELS[severity].label} severity)`,
+        message: `User ${violation.user.identityName ?? violation.user.username} triggered ${RULE_DISPLAY_NAMES[ruleType]} (${SEVERITY_LEVELS[severity].label} severity)`,
         priority: severityToNtfyPriority(violation.severity),
         tags: ['warning', 'rotating_light'],
       };
@@ -723,7 +723,7 @@ export class NotificationService {
       const severity = violation.severity as keyof typeof SEVERITY_LEVELS;
       return {
         title: 'Violation Detected',
-        body: `User ${violation.user.username} triggered ${RULE_DISPLAY_NAMES[ruleType]} (${SEVERITY_LEVELS[severity].label} severity)`,
+        body: `User ${violation.user.identityName ?? violation.user.username} triggered ${RULE_DISPLAY_NAMES[ruleType]} (${SEVERITY_LEVELS[severity].label} severity)`,
         type: severityToAppriseType(violation.severity),
       };
     }
