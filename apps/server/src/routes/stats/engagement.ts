@@ -96,9 +96,10 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
     const dailyStartFilter = dateRange.start
       ? sql`day >= date_trunc('day', ${dateRange.start}::timestamptz)`
       : sql`true`;
-    const dailyEndFilter = period === 'custom'
-      ? sql`AND day < date_trunc('day', ${dateRange.end}::timestamptz) + interval '1 day'`
-      : sql``;
+    const dailyEndFilter =
+      period === 'custom'
+        ? sql`AND day < date_trunc('day', ${dateRange.end}::timestamptz) + interval '1 day'`
+        : sql``;
     const mediaTypeFilter = mediaType ? sql`AND media_type = ${mediaType}` : sql``;
 
     // Run all queries in parallel
