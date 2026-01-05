@@ -485,6 +485,7 @@ describe('extractStreamDetails', () => {
           VideoRangeType: undefined,
           VideoRange: undefined,
           ColorSpace: 'bt2020nc',
+          ColorTransfer: undefined,
           BitDepth: 10,
         },
       });

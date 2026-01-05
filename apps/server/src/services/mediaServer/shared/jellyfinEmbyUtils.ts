@@ -390,13 +390,12 @@ function findStreamByType(
   let firstMatch: Record<string, unknown> | undefined;
 
   for (const stream of mediaStreams) {
-    const streamObj = stream as Record<string, unknown>;
-    const streamType = parseOptionalString(streamObj.Type);
+    const streamType = parseOptionalString(stream.Type);
 
     if (streamType?.toLowerCase() === type.toLowerCase()) {
-      if (!firstMatch) firstMatch = streamObj;
-      if (streamObj.IsDefault === true) {
-        defaultMatch = streamObj;
+      if (!firstMatch) firstMatch = stream;
+      if (stream.IsDefault === true) {
+        defaultMatch = stream;
         break;
       }
     }
