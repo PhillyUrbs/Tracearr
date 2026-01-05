@@ -436,6 +436,8 @@ export async function createSessionWithRulesAtomic(
             videoDecision: processed.videoDecision,
             audioDecision: processed.audioDecision,
             bitrate: processed.bitrate,
+            // Stream details (source media, stream output, transcode/subtitle info)
+            ...pickStreamDetailFields(processed),
             // Live TV specific fields
             channelTitle: processed.channelTitle,
             channelIdentifier: processed.channelIdentifier,
