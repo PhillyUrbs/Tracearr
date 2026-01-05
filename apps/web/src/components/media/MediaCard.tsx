@@ -76,7 +76,7 @@ export function MediaCard({
   return (
     <div
       className={cn(
-        'group animate-fade-in-up bg-card hover:shadow-primary/10 relative overflow-hidden rounded-xl border transition-all duration-300 hover:shadow-lg',
+        'group animate-fade-in-up bg-card card-hover relative overflow-hidden rounded-xl border',
         className
       )}
     >

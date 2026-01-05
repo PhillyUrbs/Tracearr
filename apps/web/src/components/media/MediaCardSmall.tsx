@@ -65,7 +65,7 @@ export function MediaCardSmall({
   return (
     <div
       className={cn(
-        'group animate-fade-in bg-card hover:border-primary/50 hover:shadow-primary/10 relative overflow-hidden rounded-lg border transition-all duration-300 hover:scale-[1.03] hover:shadow-lg',
+        'group animate-fade-in bg-card card-hover-border relative overflow-hidden rounded-lg border',
         className
       )}
       style={style}

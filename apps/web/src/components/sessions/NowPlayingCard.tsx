@@ -117,7 +117,7 @@ export function NowPlayingCard({ session, onClick }: NowPlayingCardProps) {
   return (
     <div
       className={cn(
-        'group animate-fade-in bg-card hover:shadow-primary/10 relative overflow-hidden rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg',
+        'group animate-fade-in bg-card card-hover relative overflow-hidden rounded-xl border',
         onClick && 'cursor-pointer'
       )}
       onClick={onClick}
