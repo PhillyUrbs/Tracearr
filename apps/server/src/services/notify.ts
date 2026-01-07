@@ -343,7 +343,7 @@ export class NotificationService {
   private buildViolationPayload(violation: ViolationWithDetails): NotificationPayload {
     return {
       event: NOTIFICATION_EVENTS.VIOLATION_DETECTED,
-      timestamp: violation.createdAt.toISOString(),
+      timestamp: new Date(violation.createdAt).toISOString(),
       data: {
         user: {
           id: violation.serverUserId,
