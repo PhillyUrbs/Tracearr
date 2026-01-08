@@ -505,9 +505,10 @@ export class TautulliService {
     serverId: string,
     pubSubService?: PubSubService,
     onProgress?: (progress: TautulliImportProgress) => Promise<void>,
-    options?: { overwriteFriendlyNames?: boolean }
+    options?: { overwriteFriendlyNames?: boolean; skipRefresh?: boolean }
   ): Promise<TautulliImportResult> {
     const overwriteFriendlyNames = options?.overwriteFriendlyNames ?? false;
+    const skipRefresh = options?.skipRefresh ?? false;
 
     // Get Tautulli settings
     const settingsRow = await db.select().from(settings).where(eq(settings.id, 1)).limit(1);
@@ -1007,12 +1008,15 @@ export class TautulliService {
     }
 
     // Refresh TimescaleDB aggregates so imported data appears in stats immediately
-    progress.message = 'Refreshing aggregates...';
-    publishProgress(progress);
-    try {
-      await refreshAggregates();
-    } catch (err) {
-      console.warn('Failed to refresh aggregates after import:', err);
+    // Skip if enrichment will follow (it will refresh after updating bitrate data)
+    if (!skipRefresh) {
+      progress.message = 'Refreshing aggregates...';
+      publishProgress(progress);
+      try {
+        await refreshAggregates();
+      } catch (err) {
+        console.warn('Failed to refresh aggregates after import:', err);
+      }
     }
 
     // Build final message with detailed breakdown
@@ -1206,6 +1210,17 @@ export class TautulliService {
       // Small delay between requests
       if (progress.processedRecords < sessionsToEnrich.length) {
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+      }
+    }
+
+    // Refresh aggregates so updated bitrate data appears in bandwidth stats
+    if (enriched > 0) {
+      progress.message = 'Refreshing aggregates...';
+      publishProgress(progress);
+      try {
+        await refreshAggregates();
+      } catch (err) {
+        console.warn('[Tautulli] Failed to refresh aggregates after enrichment:', err);
       }
     }
 

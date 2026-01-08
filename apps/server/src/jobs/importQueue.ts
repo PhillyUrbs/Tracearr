@@ -228,7 +228,7 @@ async function processTautulliImportJob(
     serverId,
     pubSubService ?? undefined,
     onProgress,
-    { overwriteFriendlyNames }
+    { overwriteFriendlyNames, skipRefresh: includeStreamDetails }
   );
 
   // (BETA) Enrich sessions with detailed stream data
