@@ -1617,7 +1617,10 @@ function MobileSettings() {
       token: pairToken.token,
       name: config?.serverName ?? 'Tracearr',
     };
-    const encoded = btoa(JSON.stringify(payload));
+    // Convert to UTF-8 bytes then base64 to handle non-ASCII characters (e.g., umlauts)
+    const jsonString = JSON.stringify(payload);
+    const bytes = new TextEncoder().encode(jsonString);
+    const encoded = btoa(String.fromCharCode(...bytes));
     return `tracearr://pair?data=${encoded}`;
   };
 
