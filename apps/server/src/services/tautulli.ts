@@ -1081,7 +1081,9 @@ export class TautulliService {
     onProgress?: (progress: TautulliImportProgress) => Promise<void>,
     options?: { limit?: number }
   ): Promise<{ enriched: number; failed: number; skipped: number }> {
-    const limit = options?.limit ?? 10000; // Default limit to prevent runaway enrichment
+    const CHUNK_SIZE = options?.limit ?? 10000; // Process in chunks of 10k, auto-continue until done
+    const BATCH_SIZE = 50; // Process 50 sessions per batch for DB writes
+    const CONCURRENCY = 10; // 10 parallel API calls
 
     // Get Tautulli settings
     const settingsRow = await db.select().from(settings).where(eq(settings.id, 1)).limit(1);
@@ -1098,35 +1100,10 @@ export class TautulliService {
       throw new Error('Failed to connect to Tautulli');
     }
 
-    // Query sessions missing quality data that have an externalSessionId
-    // Only enrich sessions where sourceVideoCodec is NULL (indicates no stream data)
-    // Order by externalSessionId DESC to process recent sessions first (higher row_id = more recent)
-    // Tautulli may have purged stream data for older sessions
-    const sessionsToEnrich = await db
-      .select({
-        id: sessions.id,
-        externalSessionId: sessions.externalSessionId,
-        sessionKey: sessions.sessionKey,
-      })
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.serverId, serverId),
-          isNotNull(sessions.externalSessionId),
-          isNull(sessions.sourceVideoCodec)
-        )
-      )
-      .orderBy(sql`CAST(${sessions.externalSessionId} AS INTEGER) DESC`)
-      .limit(limit);
-
-    if (sessionsToEnrich.length === 0) {
-      return { enriched: 0, failed: 0, skipped: 0 };
-    }
-
     // Initialize progress
     const progress: TautulliImportProgress = {
       status: 'processing',
-      totalRecords: sessionsToEnrich.length,
+      totalRecords: 0,
       fetchedRecords: 0,
       processedRecords: 0,
       importedRecords: 0,
@@ -1138,7 +1115,7 @@ export class TautulliService {
       errorRecords: 0,
       currentPage: 0,
       totalPages: 1,
-      message: `Enriching ${sessionsToEnrich.length} sessions with stream details...`,
+      message: 'Starting enrichment...',
     };
 
     const publishProgress = createSimpleProgressPublisher(
@@ -1148,73 +1125,143 @@ export class TautulliService {
     );
     publishProgress(progress);
 
-    let enriched = 0;
-    let failed = 0;
-    let skipped = 0;
+    let totalEnriched = 0;
+    let totalFailed = 0;
+    let totalSkipped = 0;
     let lastProgressTime = Date.now();
+    let chunkNumber = 0;
 
-    const DELAY_MS = 50; // Small delay between requests
+    // Process in chunks until no more sessions to enrich
+    while (true) {
+      chunkNumber++;
 
-    for (const session of sessionsToEnrich) {
-      progress.processedRecords++;
+      // Query sessions missing quality data that have an externalSessionId
+      // Only enrich sessions where sourceVideoCodec is NULL (indicates no stream data)
+      // Order by externalSessionId DESC to process recent sessions first (higher row_id = more recent)
+      // Tautulli may have purged stream data for older sessions
+      const sessionsToEnrich = await db
+        .select({
+          id: sessions.id,
+          externalSessionId: sessions.externalSessionId,
+          sessionKey: sessions.sessionKey,
+        })
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.serverId, serverId),
+            isNotNull(sessions.externalSessionId),
+            isNull(sessions.sourceVideoCodec)
+          )
+        )
+        .orderBy(sql`CAST(${sessions.externalSessionId} AS INTEGER) DESC`)
+        .limit(CHUNK_SIZE);
 
-      // Parse the externalSessionId as row_id (Tautulli's reference_id)
-      if (!session.externalSessionId) {
-        skipped++;
-        progress.skippedRecords++;
-        continue;
+      if (sessionsToEnrich.length === 0) {
+        break; // No more sessions to enrich
       }
-      const rowId = parseInt(session.externalSessionId, 10);
-      if (isNaN(rowId)) {
-        skipped++;
-        progress.skippedRecords++;
-        continue;
-      }
 
-      try {
-        // Fetch stream data from Tautulli
-        const streamData = await tautulli.getStreamData(rowId, session.sessionKey ?? undefined);
+      progress.totalRecords += sessionsToEnrich.length;
+      progress.message = `Chunk ${chunkNumber}: Enriching ${sessionsToEnrich.length} sessions...`;
+      publishProgress(progress);
 
-        if (!streamData) {
-          skipped++;
-          progress.skippedRecords++;
-          continue;
+      // Process sessions in batches with parallel API calls
+      for (let batchStart = 0; batchStart < sessionsToEnrich.length; batchStart += BATCH_SIZE) {
+        const batch = sessionsToEnrich.slice(batchStart, batchStart + BATCH_SIZE);
+
+        // Process batch with concurrency limit
+        const pendingUpdates: Array<{
+          id: string;
+          data: ReturnType<typeof mapStreamDataToSession>;
+        }> = [];
+
+        // Process in chunks of CONCURRENCY
+        for (let i = 0; i < batch.length; i += CONCURRENCY) {
+          const chunk = batch.slice(i, i + CONCURRENCY);
+
+          const results = await Promise.allSettled(
+            chunk.map(async (session) => {
+              // Parse the externalSessionId as row_id (Tautulli's reference_id)
+              if (!session.externalSessionId) {
+                return { status: 'skipped' as const, id: session.id };
+              }
+              const rowId = parseInt(session.externalSessionId, 10);
+              if (isNaN(rowId)) {
+                return { status: 'skipped' as const, id: session.id };
+              }
+
+              // Fetch stream data from Tautulli
+              const streamData = await tautulli.getStreamData(
+                rowId,
+                session.sessionKey ?? undefined
+              );
+
+              if (!streamData) {
+                return { status: 'skipped' as const, id: session.id };
+              }
+
+              // Map the data
+              const mappedData = mapStreamDataToSession(streamData);
+
+              // Only return update if we got meaningful data
+              if (
+                mappedData.sourceVideoCodec ||
+                mappedData.sourceAudioCodec ||
+                mappedData.bitrate
+              ) {
+                return { status: 'enriched' as const, id: session.id, data: mappedData };
+              }
+              return { status: 'skipped' as const, id: session.id };
+            })
+          );
+
+          // Process results
+          for (const result of results) {
+            progress.processedRecords++;
+
+            if (result.status === 'fulfilled') {
+              const value = result.value;
+              if (value.status === 'enriched' && value.data) {
+                pendingUpdates.push({ id: value.id, data: value.data });
+              } else {
+                totalSkipped++;
+                progress.skippedRecords++;
+              }
+            } else {
+              console.warn(`[Tautulli] Failed to enrich session:`, result.reason);
+              totalFailed++;
+              progress.errorRecords++;
+            }
+          }
         }
 
-        // Map and update
-        const mappedData = mapStreamDataToSession(streamData);
-
-        // Only update if we got meaningful data
-        if (mappedData.sourceVideoCodec || mappedData.sourceAudioCodec || mappedData.bitrate) {
-          await db.update(sessions).set(mappedData).where(eq(sessions.id, session.id));
-          enriched++;
-          progress.updatedRecords++;
-        } else {
-          skipped++;
-          progress.skippedRecords++;
+        // Batch write all updates in a single transaction
+        if (pendingUpdates.length > 0) {
+          await db.transaction(async (tx) => {
+            for (const update of pendingUpdates) {
+              await tx.update(sessions).set(update.data).where(eq(sessions.id, update.id));
+            }
+          });
+          totalEnriched += pendingUpdates.length;
+          progress.updatedRecords += pendingUpdates.length;
         }
-      } catch (error) {
-        console.warn(`[Tautulli] Failed to enrich session ${session.id}:`, error);
-        failed++;
-        progress.errorRecords++;
+
+        // Progress update after each batch
+        const now = Date.now();
+        if (now - lastProgressTime > 1000 || batchStart + BATCH_SIZE >= sessionsToEnrich.length) {
+          progress.message = `Chunk ${chunkNumber}: Enriched ${totalEnriched} total (${progress.processedRecords}/${progress.totalRecords} processed)...`;
+          publishProgress(progress);
+          lastProgressTime = now;
+        }
       }
 
-      // Throttled progress updates
-      const now = Date.now();
-      if (progress.processedRecords % 50 === 0 || now - lastProgressTime > 2000) {
-        progress.message = `Enriched ${enriched}/${sessionsToEnrich.length} sessions...`;
-        publishProgress(progress);
-        lastProgressTime = now;
-      }
-
-      // Small delay between requests
-      if (progress.processedRecords < sessionsToEnrich.length) {
-        await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
+      // If we got fewer than CHUNK_SIZE, we're done
+      if (sessionsToEnrich.length < CHUNK_SIZE) {
+        break;
       }
     }
 
     // Refresh aggregates so updated bitrate data appears in bandwidth stats
-    if (enriched > 0) {
+    if (totalEnriched > 0) {
       progress.message = 'Refreshing aggregates...';
       publishProgress(progress);
       try {
@@ -1226,10 +1273,10 @@ export class TautulliService {
 
     // Final progress
     progress.status = 'complete';
-    progress.message = `Enrichment complete: ${enriched} enriched, ${failed} failed, ${skipped} skipped`;
+    progress.message = `Enrichment complete: ${totalEnriched} enriched, ${totalFailed} failed, ${totalSkipped} skipped`;
     publishProgress(progress);
 
-    return { enriched, failed, skipped };
+    return { enriched: totalEnriched, failed: totalFailed, skipped: totalSkipped };
   }
 }
 
