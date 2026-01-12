@@ -314,7 +314,7 @@ export interface IMediaServerClient {
    * Terminate a playback session
    *
    * @param sessionId - The session ID to terminate (use terminationId from MediaSession)
-   * @param reason - Optional message to display to user (Plex only)
+   * @param reason - Optional message to display to user before termination
    * @returns true if successful
    * @throws Error if termination fails
    */

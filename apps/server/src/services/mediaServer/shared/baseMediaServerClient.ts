@@ -218,9 +218,44 @@ export abstract class BaseMediaServerClient
   // ==========================================================================
 
   /**
-   * Terminate a playback session by sending a Stop command
+   * Send a message to a session's client device
+   * Note: Not all clients support message display
+   *
+   * @param sessionId - The session to send the message to
+   * @param text - The message content
+   * @param header - Optional title/header for the message
+   * @param timeoutMs - Auto-dismiss timeout in milliseconds (shows as toast if set)
    */
-  async terminateSession(sessionId: string, _reason?: string): Promise<boolean> {
+  async sendMessage(
+    sessionId: string,
+    text: string,
+    header?: string,
+    timeoutMs?: number
+  ): Promise<boolean> {
+    const params = new URLSearchParams();
+    params.append('Text', text);
+    if (header) params.append('Header', header);
+    if (timeoutMs) params.append('TimeoutMs', String(timeoutMs));
+
+    const response = await fetch(`${this.baseUrl}/Sessions/${sessionId}/Message?${params}`, {
+      method: 'POST',
+      headers: this.buildHeaders(),
+    });
+
+    // Best-effort: don't fail if client doesn't support messages or session ended
+    return response.ok || response.status === 404;
+  }
+
+  /**
+   * Terminate a playback session
+   * If a reason is provided, sends it as a message to the user first
+   */
+  async terminateSession(sessionId: string, reason?: string): Promise<boolean> {
+    // Send message to user before stopping (Emby/Jellyfin require separate API call)
+    if (reason) {
+      await this.sendMessage(sessionId, reason, 'Stream Terminated', 5000);
+    }
+
     const response = await fetch(`${this.baseUrl}/Sessions/${sessionId}/Playing/Stop`, {
       method: 'POST',
       headers: this.buildHeaders(),
