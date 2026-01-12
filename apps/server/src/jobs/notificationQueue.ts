@@ -8,7 +8,7 @@
 import { Queue, Worker, type Job, type ConnectionOptions } from 'bullmq';
 import type { ViolationWithDetails, ActiveSession, NotificationEventType } from '@tracearr/shared';
 import { WS_EVENTS } from '@tracearr/shared';
-import { notificationService } from '../services/notify.js';
+import { notificationManager } from '../services/notifications/index.js';
 import { pushNotificationService } from '../services/pushNotification.js';
 import { getNotificationSettings } from '../routes/settings.js';
 import { getChannelRouting } from '../routes/channelRouting.js';
@@ -168,9 +168,9 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
   const eventType = JOB_TYPE_TO_EVENT_TYPE[type];
   const routing = await getChannelRouting(eventType);
 
-  // Build settings object with routing-aware channel enablement
+  // Build notification settings with routing-aware channel enablement
   // The routing config controls which channels receive notifications
-  const effectiveSettings = {
+  const notificationSettings = {
     // Only include webhook URLs if routing allows
     discordWebhookUrl: routing.discordEnabled ? settings.discordWebhookUrl : null,
     customWebhookUrl: routing.webhookEnabled ? settings.customWebhookUrl : null,
@@ -179,26 +179,13 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
     ntfyAuthToken: settings.ntfyAuthToken,
     pushoverUserKey: settings.pushoverUserKey,
     pushoverApiToken: settings.pushoverApiToken,
-    // Fill in defaults for other Settings fields
-    allowGuestAccess: false,
-    unitSystem: settings.unitSystem ?? ('metric' as const), // Display preference for units
-    pollerEnabled: true,
-    pollerIntervalMs: 15000,
-    tautulliUrl: null,
-    tautulliApiKey: null,
-    externalUrl: null,
-    basePath: '',
-    trustProxy: false,
-    mobileEnabled: settings.mobileEnabled ?? false,
-    primaryAuthMethod: 'local' as const, // Not used in notifications, but required by Settings type
-    usePlexGeoip: false, // Not used in notifications, but required by Settings type
   };
 
   switch (type) {
     case 'violation':
       // Send to Discord/webhooks (if routing allows)
       if (routing.discordEnabled || routing.webhookEnabled) {
-        await notificationService.notifyViolation(payload, effectiveSettings);
+        await notificationManager.notifyViolation(payload, notificationSettings);
       }
       // Send push notification to mobile devices (if routing allows)
       if (routing.pushEnabled) {
@@ -209,7 +196,7 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
     case 'session_started':
       // Send to Discord/webhooks (if routing allows)
       if (routing.discordEnabled || routing.webhookEnabled) {
-        await notificationService.notifySessionStarted(payload, effectiveSettings);
+        await notificationManager.notifySessionStarted(payload, notificationSettings);
       }
       // Send push notification to mobile devices (if routing allows)
       if (routing.pushEnabled) {
@@ -220,7 +207,7 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
     case 'session_stopped':
       // Send to Discord/webhooks (if routing allows)
       if (routing.discordEnabled || routing.webhookEnabled) {
-        await notificationService.notifySessionStopped(payload, effectiveSettings);
+        await notificationManager.notifySessionStopped(payload, notificationSettings);
       }
       // Send push notification to mobile devices (if routing allows)
       if (routing.pushEnabled) {
@@ -230,7 +217,7 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
 
     case 'server_down':
       if (routing.discordEnabled || routing.webhookEnabled) {
-        await notificationService.notifyServerDown(payload.serverName, effectiveSettings);
+        await notificationManager.notifyServerDown(payload.serverName, notificationSettings);
       }
       if (routing.pushEnabled) {
         await pushNotificationService.notifyServerDown(payload.serverName, payload.serverId);
@@ -245,7 +232,7 @@ async function processNotificationJob(job: Job<NotificationJobData>): Promise<vo
 
     case 'server_up':
       if (routing.discordEnabled || routing.webhookEnabled) {
-        await notificationService.notifyServerUp(payload.serverName, effectiveSettings);
+        await notificationManager.notifyServerUp(payload.serverName, notificationSettings);
       }
       if (routing.pushEnabled) {
         await pushNotificationService.notifyServerUp(payload.serverName, payload.serverId);

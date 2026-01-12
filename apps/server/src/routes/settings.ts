@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import { updateSettingsSchema, type Settings, type WebhookFormat } from '@tracearr/shared';
 import { db } from '../db/client.js';
 import { settings } from '../db/schema.js';
-import { sendTestWebhook } from '../services/notify.js';
+import { notificationManager } from '../services/notifications/index.js';
 
 // Default settings row ID (singleton pattern)
 const SETTINGS_ID = 1;
@@ -384,15 +384,39 @@ export const settingsRoutes: FastifyPluginAsync = async (app) => {
       return reply.badRequest(`No ${type} webhook URL configured`);
     }
 
-    const result = await sendTestWebhook(
-      webhookUrl,
-      type,
+    // Build notification settings for testing
+    const testSettings = {
+      discordWebhookUrl: type === 'discord' ? webhookUrl : null,
+      customWebhookUrl: type === 'custom' ? webhookUrl : null,
       webhookFormat,
       ntfyTopic,
       ntfyAuthToken,
       pushoverUserKey,
-      pushoverApiToken
-    );
+      pushoverApiToken,
+    };
+
+    // Determine which agent to test based on type and format
+    let agentName: string;
+    if (type === 'discord') {
+      agentName = 'discord';
+    } else {
+      // Custom webhook - determine agent based on format
+      switch (webhookFormat) {
+        case 'ntfy':
+          agentName = 'ntfy';
+          break;
+        case 'apprise':
+          agentName = 'apprise';
+          break;
+        case 'pushover':
+          agentName = 'pushover';
+          break;
+        default:
+          agentName = 'json-webhook';
+      }
+    }
+
+    const result = await notificationManager.testAgent(agentName, testSettings);
 
     if (!result.success) {
       return reply.code(502).send({
