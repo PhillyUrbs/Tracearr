@@ -105,7 +105,7 @@ export function normalizeResolution(input: ResolutionInput): string | null {
  * Prefers resolution over bitrate for clarity
  *
  * @param quality - Session quality object
- * @returns Quality string for display (e.g., "4K", "1080p", "54Mbps", "Direct")
+ * @returns Quality string for display (e.g., "4K", "1080p", "54 Mbps", "Direct")
  */
 export function formatQualityString(quality: {
   videoResolution?: string;
@@ -127,7 +127,9 @@ export function formatQualityString(quality: {
 
   // Fall back to bitrate if available
   if (quality.bitrate && quality.bitrate > 0) {
-    return `${Math.round(quality.bitrate / 1000)}Mbps`;
+    const mbps = quality.bitrate / 1000;
+    const formatted = mbps % 1 === 0 ? mbps.toFixed(0) : mbps.toFixed(1);
+    return `${formatted} Mbps`;
   }
 
   // Last resort: transcode status

@@ -13,17 +13,17 @@ import { formatQualityString, isPrivateIP, parseJellyfinClient } from '../utils.
 describe('formatQualityString', () => {
   describe('bitrate formatting', () => {
     it('should format transcode bitrate in Mbps', () => {
-      expect(formatQualityString(8000000, 0, false)).toBe('8Mbps');
-      expect(formatQualityString(10000000, 0, true)).toBe('10Mbps');
+      expect(formatQualityString(8000000, 0, false)).toBe('8 Mbps');
+      expect(formatQualityString(10000000, 0, true)).toBe('10 Mbps');
     });
 
     it('should fall back to source bitrate when transcode bitrate is 0', () => {
-      expect(formatQualityString(0, 12000000, false)).toBe('12Mbps');
+      expect(formatQualityString(0, 12000000, false)).toBe('12 Mbps');
     });
 
-    it('should round bitrate correctly', () => {
-      expect(formatQualityString(8500000, 0, false)).toBe('9Mbps'); // Rounds up
-      expect(formatQualityString(8400000, 0, false)).toBe('8Mbps'); // Rounds down
+    it('should show decimal only when fractional', () => {
+      expect(formatQualityString(8500000, 0, false)).toBe('8.5 Mbps');
+      expect(formatQualityString(8000000, 0, false)).toBe('8 Mbps');
     });
   });
 

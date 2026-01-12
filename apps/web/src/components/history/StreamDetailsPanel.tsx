@@ -42,7 +42,11 @@ interface StreamDetailsPanelProps {
 // Format bitrate for display
 function formatBitrate(bitrate: number | null | undefined): string {
   if (!bitrate) return '—';
-  if (bitrate >= 1000) return `${(bitrate / 1000).toFixed(1)} Mbps`;
+  if (bitrate >= 1000) {
+    const mbps = bitrate / 1000;
+    const formatted = mbps % 1 === 0 ? mbps.toFixed(0) : mbps.toFixed(1);
+    return `${formatted} Mbps`;
+  }
   return `${bitrate} kbps`;
 }
 

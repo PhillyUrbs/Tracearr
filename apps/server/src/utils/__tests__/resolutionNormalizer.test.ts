@@ -193,12 +193,13 @@ describe('formatQualityString', () => {
   });
 
   it('should fall back to bitrate when no resolution', () => {
-    expect(formatQualityString({ bitrate: 20000 })).toBe('20Mbps');
-    expect(formatQualityString({ bitrate: 54000 })).toBe('54Mbps');
+    expect(formatQualityString({ bitrate: 20000 })).toBe('20 Mbps');
+    expect(formatQualityString({ bitrate: 54000 })).toBe('54 Mbps');
   });
 
-  it('should round bitrate to Mbps', () => {
-    expect(formatQualityString({ bitrate: 12500 })).toBe('13Mbps');
+  it('should show decimal only when fractional', () => {
+    expect(formatQualityString({ bitrate: 12500 })).toBe('12.5 Mbps');
+    expect(formatQualityString({ bitrate: 12000 })).toBe('12 Mbps');
   });
 
   it('should show Transcoding when transcoding with no other data', () => {
@@ -219,6 +220,6 @@ describe('formatQualityString', () => {
   });
 
   it('should prefer bitrate over transcode status', () => {
-    expect(formatQualityString({ bitrate: 15000, isTranscode: true })).toBe('15Mbps');
+    expect(formatQualityString({ bitrate: 15000, isTranscode: true })).toBe('15 Mbps');
   });
 });
