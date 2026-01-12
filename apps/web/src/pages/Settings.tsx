@@ -10,7 +10,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Field, FieldGroup, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import {
   AutosaveTextField,
-  AutosaveSecretField,
   AutosaveNumberField,
   AutosaveSelectField,
   AutosaveSwitchField,
@@ -77,7 +76,6 @@ import type {
   JellystatImportProgress,
   MobileSession,
   MobileQRPayload,
-  WebhookFormat,
 } from '@tracearr/shared';
 import {
   useSettings,
