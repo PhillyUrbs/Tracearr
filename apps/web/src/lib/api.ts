@@ -938,6 +938,9 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+    getApiKey: () => this.request<{ token: string | null }>('/settings/api-key'),
+    regenerateApiKey: () =>
+      this.request<{ token: string }>('/settings/api-key/regenerate', { method: 'POST' }),
   };
 
   // Channel Routing

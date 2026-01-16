@@ -3,6 +3,30 @@ import type { Settings } from '@tracearr/shared';
 import { toast } from 'sonner';
 import { api } from '@/lib/api';
 
+// API Key queries and mutations
+export function useApiKey() {
+  return useQuery({
+    queryKey: ['apiKey'],
+    queryFn: api.settings.getApiKey,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+export function useRegenerateApiKey() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: api.settings.regenerateApiKey,
+    onSuccess: (data) => {
+      queryClient.setQueryData(['apiKey'], data);
+      toast.success('API Key Generated', { description: 'Your new API key is ready to use.' });
+    },
+    onError: (err) => {
+      toast.error('Failed to Generate API Key', { description: err.message });
+    },
+  });
+}
+
 export function useSettings() {
   return useQuery({
     queryKey: ['settings'],

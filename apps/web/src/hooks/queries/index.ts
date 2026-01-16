@@ -89,7 +89,7 @@ export {
 } from './useServers';
 
 // Settings hooks
-export { useSettings, useUpdateSettings } from './useSettings';
+export { useSettings, useUpdateSettings, useApiKey, useRegenerateApiKey } from './useSettings';
 
 // Channel Routing hooks
 export { useChannelRouting, useUpdateChannelRouting } from './useChannelRouting';

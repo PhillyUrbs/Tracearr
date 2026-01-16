@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, Routes, Route } from 'react-router';
+import { NavLink, Routes, Route, Link as RouterLink } from 'react-router';
 import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -101,6 +101,8 @@ import {
   useGeneratePairToken,
   useRevokeSession,
   useRevokeMobileSessions,
+  useApiKey,
+  useRegenerateApiKey,
 } from '@/hooks/queries';
 import {
   DndContext,
@@ -162,6 +164,120 @@ const THEME_MODES: { value: ThemeMode; label: string; icon: typeof Sun; isDefaul
   { value: 'dark', label: 'Dark', icon: Moon, isDefault: true },
   { value: 'system', label: 'System', icon: Monitor },
 ];
+
+function ApiKeyCard() {
+  const { data: apiKeyData, isLoading } = useApiKey();
+  const regenerateApiKey = useRegenerateApiKey();
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const token = apiKeyData?.token;
+  const hasKey = !!token;
+
+  const handleCopy = async () => {
+    if (token) {
+      try {
+        await navigator.clipboard.writeText(token);
+        toast.success('Copied to clipboard');
+      } catch {
+        toast.error('Failed to copy to clipboard');
+      }
+    }
+  };
+
+  const handleRegenerate = () => {
+    if (hasKey) {
+      setShowConfirm(true);
+    } else {
+      regenerateApiKey.mutate();
+    }
+  };
+
+  const confirmRegenerate = () => {
+    regenerateApiKey.mutate();
+    setShowConfirm(false);
+  };
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="h-5 w-5" />
+                API Key
+              </CardTitle>
+              <CardDescription>
+                Access the Tracearr API for third-party integrations like Homarr, Home Assistant,
+                etc.
+              </CardDescription>
+            </div>
+            <RouterLink to="/api-docs">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <ExternalLink className="h-3.5 w-3.5" />
+                API Docs
+              </Button>
+            </RouterLink>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <Skeleton className="h-10 w-full" />
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={token ?? ''}
+                  placeholder="No API key generated"
+                  className="font-mono text-sm"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleCopy}
+                  disabled={!hasKey}
+                  title="Copy to clipboard"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground text-sm">
+                  {hasKey
+                    ? 'Your API key grants full read access to your Tracearr data.'
+                    : 'Generate an API key to enable external integrations.'}
+                </p>
+                <Button
+                  variant={hasKey ? 'outline' : 'default'}
+                  size="sm"
+                  onClick={handleRegenerate}
+                  disabled={regenerateApiKey.isPending}
+                >
+                  {regenerateApiKey.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  {hasKey ? 'Regenerate' : 'Generate Key'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        title="Regenerate API Key?"
+        description="This will invalidate your current API key. Any integrations using the old key will stop working."
+        confirmLabel="Regenerate"
+        onConfirm={confirmRegenerate}
+      />
+    </>
+  );
+}
 
 function GeneralSettings() {
   const { data: settings, isLoading } = useSettings();
@@ -504,6 +620,9 @@ function GeneralSettings() {
           </FieldGroup>
         </CardContent>
       </Card>
+
+      {/* API Key */}
+      <ApiKeyCard />
     </div>
   );
 }
