@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents -- eslint can't resolve @tracearr/shared types but TS compiles fine */
 import { useState } from 'react';
 import {
   Monitor,
