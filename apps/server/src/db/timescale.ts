@@ -413,7 +413,11 @@ async function continuousAggregateExists(name: string): Promise<boolean> {
 // Library aggregates that require library_snapshots to be a hypertable
 const LIBRARY_AGGREGATES = ['library_stats_daily', 'content_quality_daily'];
 
-async function createAggregate(def: AggregateDefinition, hasToolkit: boolean): Promise<void> {
+async function createAggregate(
+  def: AggregateDefinition,
+  hasToolkit: boolean,
+  skipLibraryInit = false
+): Promise<void> {
   // Check if aggregate already exists - skip if so
   const exists = await continuousAggregateExists(def.name);
   if (exists) {
@@ -421,7 +425,8 @@ async function createAggregate(def: AggregateDefinition, hasToolkit: boolean): P
   }
 
   // Library aggregates require library_snapshots to be a hypertable
-  if (LIBRARY_AGGREGATES.includes(def.name)) {
+  // skipLibraryInit prevents infinite recursion: createAggregate -> initLibrarySnapshotsHypertable -> createLibraryAggregates -> createAggregate
+  if (LIBRARY_AGGREGATES.includes(def.name) && !skipLibraryInit) {
     await initLibrarySnapshotsHypertable();
   }
 
@@ -871,8 +876,9 @@ async function createLibraryAggregates(): Promise<void> {
 
   // Library aggregates don't use HyperLogLog, they use simple MAX() aggregation
   // Pass hasToolkit=true to use toolkitSql which is identical to fallbackSql for these
+  // Pass skipLibraryInit=true to prevent infinite recursion (we're already in library init)
   for (const def of libraryAggregates) {
-    await createAggregate(def, true);
+    await createAggregate(def, true, true);
   }
 }
 
@@ -1123,11 +1129,17 @@ export async function initTimescaleDB(): Promise<{
 
   // Ensure engagement views exist (fixes broken installs and fresh installs)
   // These views depend on daily_content_engagement continuous aggregate
+  // Skip if all views already exist to avoid unnecessary DDL on every startup
   try {
     const aggregatesExist = await continuousAggregateExists('daily_content_engagement');
     if (aggregatesExist) {
-      await ensureEngagementViews();
-      actions.push('Ensured engagement views exist (CREATE OR REPLACE)');
+      const viewsExist = await engagementViewsExist();
+      if (!viewsExist) {
+        await ensureEngagementViews();
+        actions.push('Created missing engagement views');
+      } else {
+        actions.push('Engagement views already exist');
+      }
     }
   } catch (err) {
     console.warn('Failed to create engagement views:', err);
@@ -1142,6 +1154,33 @@ export async function initTimescaleDB(): Promise<{
     status,
     actions,
   };
+}
+
+/** List of engagement views created by ensureEngagementViews() */
+const ENGAGEMENT_VIEWS = [
+  'content_engagement_summary',
+  'episode_continuity_stats',
+  'daily_show_intensity',
+  'show_engagement_summary',
+  'top_content_by_plays',
+  'top_shows_by_engagement',
+  'user_engagement_profile',
+];
+
+/**
+ * Check if all engagement views already exist
+ */
+async function engagementViewsExist(): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`
+      SELECT COUNT(*)::int as count FROM information_schema.views
+      WHERE table_schema = 'public'
+        AND table_name = ANY(${ENGAGEMENT_VIEWS})
+    `);
+    return (result.rows[0] as { count: number })?.count === ENGAGEMENT_VIEWS.length;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -1454,11 +1493,10 @@ export async function rebuildTimescaleViews(
     report(5, 'Creating engagement views...');
     await ensureEngagementViews();
 
-    // Step 10: Refresh ALL continuous aggregates with historical data
-    report(10, 'Refreshing all continuous aggregates with historical data...');
-    for (const def of definitions) {
-      await db.execute(sql.raw(`CALL refresh_continuous_aggregate('${def.name}', NULL, NULL)`));
-    }
+    // Step 10: Skip full historical refresh - it can take minutes/hours with large datasets
+    // The scheduled refresh policies will catch up over time (every 5 minutes)
+    // This is safe because continuous aggregates are for dashboard analytics, not critical data
+    report(10, 'Skipping historical refresh - policies will catch up automatically');
 
     return {
       success: true,
