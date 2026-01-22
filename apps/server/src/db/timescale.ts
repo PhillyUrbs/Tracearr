@@ -1434,9 +1434,12 @@ export async function rebuildTimescaleViews(
       await db.execute(sql.raw(`DROP MATERIALIZED VIEW IF EXISTS ${def.name} CASCADE`));
     }
 
-    // Step 2: Check for toolkit
-    report(2, 'Checking TimescaleDB Toolkit availability...');
+    // Step 2: Check for toolkit and ensure prerequisites
+    report(2, 'Checking prerequisites...');
     const hasToolkit = await isToolkitInstalled();
+
+    // Ensure library_snapshots is a hypertable before creating library aggregates
+    await initLibrarySnapshotsHypertable();
 
     // Step 3: Recreate all continuous aggregates with current definitions
     report(3, 'Creating continuous aggregates with updated definitions...');
