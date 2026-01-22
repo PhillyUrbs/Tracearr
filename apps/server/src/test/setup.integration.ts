@@ -84,7 +84,7 @@ beforeAll(async () => {
       console.warn('[Test Setup] TimescaleDB init warning:', error);
     }
   }
-});
+}, 60000); // 60s timeout for database setup + migrations + TimescaleDB init
 
 // Reset database and factories before each test for isolation
 beforeEach(async () => {
