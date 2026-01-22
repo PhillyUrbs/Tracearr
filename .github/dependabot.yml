@@ -10,6 +10,10 @@ updates:
     # Only update direct dependencies, ignore transitive
     allow:
       - dependency-type: "direct"
+    ignore:
+      # @types/node major version must match our Node version
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     groups:
       production:
         dependency-type: "production"
@@ -37,5 +41,12 @@ updates:
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 3
+    ignore:
+      # Postgres major upgrades require manual data migration
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
+      # Node odd versions (21, 23, 25, 27) are not LTS - skip them
+      - dependency-name: "node"
+        versions: ["21", "23", "25", "27", "29"]
     commit-message:
       prefix: "deps(docker)"
