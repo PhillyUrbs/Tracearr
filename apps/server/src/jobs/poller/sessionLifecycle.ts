@@ -42,6 +42,11 @@ const MAX_SERIALIZATION_RETRIES = 3;
 const SERIALIZATION_RETRY_BASE_MS = 50; // P2-7: Increased from 10ms for better backoff
 const TRANSACTION_TIMEOUT_MS = 10000; // P2-8: 10 second timeout for transactions
 
+// Time bound for active session queries to limit TimescaleDB chunk scanning.
+// Active sessions should only exist in recent chunks - anything older would have
+// been force-stopped by the stale session sweep. 7 days gives ample buffer.
+const ACTIVE_SESSION_CHUNK_BOUND_MS = 7 * 24 * 60 * 60 * 1000;
+
 /**
  * Check if an error is a PostgreSQL serialization failure.
  * These occur when SERIALIZABLE transactions conflict.
@@ -248,6 +253,9 @@ export async function findActiveSession(
   serverId: string,
   sessionKey: string
 ): Promise<typeof sessions.$inferSelect | null> {
+  // Time bound reduces TimescaleDB chunk scanning (only recent chunks can have active sessions)
+  const chunkBound = new Date(Date.now() - ACTIVE_SESSION_CHUNK_BOUND_MS);
+
   const rows = await db
     .select()
     .from(sessions)
@@ -255,7 +263,8 @@ export async function findActiveSession(
       and(
         eq(sessions.serverId, serverId),
         eq(sessions.sessionKey, sessionKey),
-        isNull(sessions.stoppedAt)
+        isNull(sessions.stoppedAt),
+        gte(sessions.startedAt, chunkBound)
       )
     )
     .limit(1);
@@ -271,6 +280,9 @@ export async function findActiveSessionsAll(
   serverId: string,
   sessionKey: string
 ): Promise<(typeof sessions.$inferSelect)[]> {
+  // Time bound reduces TimescaleDB chunk scanning (only recent chunks can have active sessions)
+  const chunkBound = new Date(Date.now() - ACTIVE_SESSION_CHUNK_BOUND_MS);
+
   return db
     .select()
     .from(sessions)
@@ -278,7 +290,8 @@ export async function findActiveSessionsAll(
       and(
         eq(sessions.serverId, serverId),
         eq(sessions.sessionKey, sessionKey),
-        isNull(sessions.stoppedAt)
+        isNull(sessions.stoppedAt),
+        gte(sessions.startedAt, chunkBound)
       )
     );
 }
@@ -301,6 +314,9 @@ export async function createSessionWithRulesAtomic(
 
   // STEP 1: Check for quality change (active session with same user+ratingKey)
   if (processed.ratingKey) {
+    // Time bound reduces TimescaleDB chunk scanning (only recent chunks can have active sessions)
+    const chunkBound = new Date(Date.now() - ACTIVE_SESSION_CHUNK_BOUND_MS);
+
     const activeSameContent = await db
       .select()
       .from(sessions)
@@ -308,7 +324,8 @@ export async function createSessionWithRulesAtomic(
         and(
           eq(sessions.serverUserId, serverUser.id),
           eq(sessions.ratingKey, processed.ratingKey),
-          isNull(sessions.stoppedAt)
+          isNull(sessions.stoppedAt),
+          gte(sessions.startedAt, chunkBound)
         )
       )
       .orderBy(desc(sessions.startedAt))

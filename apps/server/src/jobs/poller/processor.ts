@@ -7,7 +7,7 @@
  * - Lifecycle management: start, stop, trigger
  */
 
-import { eq, and, isNull, lte, inArray } from 'drizzle-orm';
+import { eq, and, isNull, lte, gte, inArray } from 'drizzle-orm';
 import {
   POLLING_INTERVALS,
   SESSION_LIMITS,
@@ -57,6 +57,11 @@ const defaultConfig: PollerConfig = {
   enabled: true,
   intervalMs: POLLING_INTERVALS.SESSIONS,
 };
+
+// Time bound for active session queries to limit TimescaleDB chunk scanning.
+// Active sessions should only exist in recent chunks - anything older would have
+// been force-stopped by the stale session sweep. 7 days gives ample buffer.
+const ACTIVE_SESSION_CHUNK_BOUND_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ============================================================================
 // Server Session Processing
@@ -332,6 +337,9 @@ async function processServerSessions(
             }
 
             if (processed.ratingKey && userDetail?.id) {
+              // Time bound reduces TimescaleDB chunk scanning
+              const chunkBound = new Date(Date.now() - ACTIVE_SESSION_CHUNK_BOUND_MS);
+
               const [existingForContent] = await db
                 .select({ id: sessions.id, sessionKey: sessions.sessionKey })
                 .from(sessions)
@@ -339,7 +347,8 @@ async function processServerSessions(
                   and(
                     eq(sessions.serverUserId, userDetail.id),
                     eq(sessions.ratingKey, processed.ratingKey),
-                    isNull(sessions.stoppedAt)
+                    isNull(sessions.stoppedAt),
+                    gte(sessions.startedAt, chunkBound)
                   )
                 )
                 .limit(1);
@@ -458,6 +467,9 @@ async function processServerSessions(
               // during transcoder restarts or quality changes. We should NOT create a new
               // session (which triggers quality change detection) - instead, just update cache.
               if (processed.ratingKey && userDetail?.id) {
+                // Time bound reduces TimescaleDB chunk scanning
+                const chunkBound = new Date(Date.now() - ACTIVE_SESSION_CHUNK_BOUND_MS);
+
                 const [existingForContent] = await db
                   .select({ id: sessions.id, sessionKey: sessions.sessionKey })
                   .from(sessions)
@@ -465,7 +477,8 @@ async function processServerSessions(
                     and(
                       eq(sessions.serverUserId, userDetail.id),
                       eq(sessions.ratingKey, processed.ratingKey),
-                      isNull(sessions.stoppedAt)
+                      isNull(sessions.stoppedAt),
+                      gte(sessions.startedAt, chunkBound)
                     )
                   )
                   .limit(1);
@@ -811,6 +824,11 @@ export async function sweepStaleSessions(): Promise<number> {
       Date.now() - SESSION_LIMITS.STALE_SESSION_TIMEOUT_SECONDS * 1000
     );
 
+    // Only check recent chunks to avoid locking all TimescaleDB partitions.
+    // Active sessions can only exist in recent data - anything older would have
+    // been force-stopped by previous sweeps. 7 days gives ample buffer.
+    const chunkBound = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
     // Find all active sessions that haven't been seen recently
     const staleSessions = await db
       .select()
@@ -818,7 +836,8 @@ export async function sweepStaleSessions(): Promise<number> {
       .where(
         and(
           isNull(sessions.stoppedAt), // Still active
-          lte(sessions.lastSeenAt, staleThreshold) // Not seen recently
+          lte(sessions.lastSeenAt, staleThreshold), // Not seen recently
+          gte(sessions.startedAt, chunkBound) // Only recent chunks (reduces lock count)
         )
       );
 
