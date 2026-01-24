@@ -98,17 +98,17 @@
     "waitingForPlex": "Auf Plex-Autorisierung warten..."
   },
   "update": {
-    "title": "Update Available",
+    "title": "Update verfügbar",
     "releaseNotes": "Release Notes",
-    "updateCommand": "Update Command",
-    "pullInstructions": "After pulling, restart your container to apply the update.",
+    "updateCommand": "Befehl aktualisieren",
+    "pullInstructions": "Starten Sie nach dem laden Ihren Container neu, um das Update anzuwenden.",
     "stableRelease": "Stable Release",
     "betaUpdate": "Beta Update",
-    "newVersion": "New Version",
-    "versionAvailable": "{{version}} available"
+    "newVersion": "Neue Version",
+    "versionAvailable": "{{version}} verfügabr"
   },
   "serverHealth": {
-    "unreachable": "{{serverName}} is unreachable",
-    "multipleUnreachable": "{{count}} servers unreachable: {{serverNames}}"
+    "unreachable": "{{serverName}} ist unerreichbar",
+    "multipleUnreachable": "{{count}} Server nicht erreichbar: {{serverNames}}"
   }
 }
