@@ -181,7 +181,11 @@ describe('Maintenance Routes', () => {
       expect(body.status).toBe('queued');
       expect(body.jobId).toBe(jobId);
       expect(body.message).toContain('queued');
-      expect(enqueueMaintenanceJob).toHaveBeenCalledWith('normalize_players', ownerUser.userId);
+      expect(enqueueMaintenanceJob).toHaveBeenCalledWith(
+        'normalize_players',
+        ownerUser.userId,
+        undefined
+      );
     });
 
     it('starts normalize_countries job for owner', async () => {
@@ -196,7 +200,11 @@ describe('Maintenance Routes', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(enqueueMaintenanceJob).toHaveBeenCalledWith('normalize_countries', ownerUser.userId);
+      expect(enqueueMaintenanceJob).toHaveBeenCalledWith(
+        'normalize_countries',
+        ownerUser.userId,
+        undefined
+      );
     });
 
     it('starts fix_imported_progress job for owner', async () => {
@@ -211,7 +219,11 @@ describe('Maintenance Routes', () => {
       });
 
       expect(response.statusCode).toBe(200);
-      expect(enqueueMaintenanceJob).toHaveBeenCalledWith('fix_imported_progress', ownerUser.userId);
+      expect(enqueueMaintenanceJob).toHaveBeenCalledWith(
+        'fix_imported_progress',
+        ownerUser.userId,
+        undefined
+      );
     });
 
     it('starts rebuild_timescale_views job for owner', async () => {
@@ -228,7 +240,28 @@ describe('Maintenance Routes', () => {
       expect(response.statusCode).toBe(200);
       expect(enqueueMaintenanceJob).toHaveBeenCalledWith(
         'rebuild_timescale_views',
-        ownerUser.userId
+        ownerUser.userId,
+        undefined
+      );
+    });
+
+    it('passes fullRefresh option for rebuild_timescale_views', async () => {
+      app = await buildTestApp(ownerUser);
+
+      const jobId = 'job-full-refresh';
+      vi.mocked(enqueueMaintenanceJob).mockResolvedValue(jobId);
+
+      const response = await app.inject({
+        method: 'POST',
+        url: '/maintenance/jobs/rebuild_timescale_views',
+        payload: { fullRefresh: true },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(enqueueMaintenanceJob).toHaveBeenCalledWith(
+        'rebuild_timescale_views',
+        ownerUser.userId,
+        { fullRefresh: true }
       );
     });
 
