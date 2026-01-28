@@ -15,6 +15,18 @@ error() { echo -e "${RED}[Tracearr]${NC} $1"; }
 mkdir -p /var/log/supervisor
 
 # =============================================================================
+# Increase file descriptor limit for TimescaleDB
+# =============================================================================
+# TimescaleDB creates many chunks (each a separate table with multiple files).
+# The default soft limit (1024) can be exhausted with large datasets.
+# Docker's default hard limit is typically 1048576, so this should succeed.
+if ulimit -n 65536 2>/dev/null; then
+    log "File descriptor limit set to 65536"
+else
+    warn "Could not increase file descriptor limit (current: $(ulimit -n))"
+fi
+
+# =============================================================================
 # Timezone configuration
 # =============================================================================
 if [ -n "$TZ" ] && [ "$TZ" != "UTC" ]; then

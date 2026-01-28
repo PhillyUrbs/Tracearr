@@ -21,6 +21,10 @@ services:
     image: ghcr.io/connorgallopo/tracearr:supervised
     shm_size: 512mb  # Required for PostgreSQL shared memory (increase for large imports)
     mem_limit: 3g    # Minimum 3GB required (PostgreSQL + Redis + Node.js)
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536  # TimescaleDB chunks require many file descriptors
     ports:
       - "${PORT:-3000}:3000"
     environment:
