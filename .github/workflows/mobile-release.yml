@@ -147,18 +147,19 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # Prebuild Android to get hermesc for Hermes bytecode compilation
-      # Note: --no-install was removed because hermesc requires gradle sync
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Prebuild for Hermes
-        run: npx expo prebuild --platform android --clean
-        env:
-          CI: 1
+      # Add hermesc to PATH for Hermes bytecode compilation during OTA updates
+      - name: Setup hermesc
+        run: |
+          HERMESC_PATH=$(find $GITHUB_WORKSPACE/node_modules -path "*/hermes-compiler/hermesc/linux64-bin" -type d 2>/dev/null | head -1)
+          if [ -n "$HERMESC_PATH" ]; then
+            echo "Found hermesc at: $HERMESC_PATH"
+            chmod +x "$HERMESC_PATH/hermesc"
+            echo "$HERMESC_PATH" >> $GITHUB_PATH
+          else
+            echo "::error::hermesc not found in node_modules"
+            exit 1
+          fi
+        working-directory: .
 
       - name: Validate secrets
         run: |
@@ -262,17 +263,19 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # Prebuild Android to get hermesc for Hermes bytecode compilation
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Prebuild for Hermes
-        run: npx expo prebuild --platform android --clean
-        env:
-          CI: 1
+      # Add hermesc to PATH for Hermes bytecode compilation
+      - name: Setup hermesc
+        run: |
+          HERMESC_PATH=$(find $GITHUB_WORKSPACE/node_modules -path "*/hermes-compiler/hermesc/linux64-bin" -type d 2>/dev/null | head -1)
+          if [ -n "$HERMESC_PATH" ]; then
+            echo "Found hermesc at: $HERMESC_PATH"
+            chmod +x "$HERMESC_PATH/hermesc"
+            echo "$HERMESC_PATH" >> $GITHUB_PATH
+          else
+            echo "::error::hermesc not found in node_modules"
+            exit 1
+          fi
+        working-directory: .
 
       - name: Push OTA update with retry
         run: |
