@@ -110,8 +110,7 @@ function convertSimultaneousLocations(params: SimultaneousLocationsParams): Rule
  * Convert legacy device_velocity rule to V2 format.
  *
  * Original behavior: Flag if unique IPs in windowHours exceeds maxIps.
- * V2 equivalent: unique_ips_in_window > maxIps
- * Note: windowHours parameter is not directly mapped - will need context configuration.
+ * V2 equivalent: unique_ips_in_window > maxIps with window_hours param preserved.
  */
 function convertDeviceVelocity(params: DeviceVelocityParams): RuleConditions {
   const conditions: Condition[] = [
@@ -119,6 +118,9 @@ function convertDeviceVelocity(params: DeviceVelocityParams): RuleConditions {
       field: 'unique_ips_in_window',
       operator: 'gt',
       value: params.maxIps,
+      params: {
+        window_hours: params.windowHours,
+      },
     },
   ];
 

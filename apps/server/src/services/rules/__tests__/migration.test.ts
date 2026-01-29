@@ -180,7 +180,7 @@ describe('Rule Migration', () => {
     });
 
     describe('device_velocity', () => {
-      it('converts device velocity rule', () => {
+      it('converts device velocity rule with windowHours preserved', () => {
         const legacyRule: LegacyRule = {
           id: 'rule-1',
           name: 'Max 5 IPs',
@@ -197,7 +197,26 @@ describe('Rule Migration', () => {
           field: 'unique_ips_in_window',
           operator: 'gt',
           value: 5,
+          params: {
+            window_hours: 24,
+          },
         });
+      });
+
+      it('preserves custom windowHours value', () => {
+        const legacyRule: LegacyRule = {
+          id: 'rule-1',
+          name: 'Max 10 IPs in 48 hours',
+          type: 'device_velocity',
+          params: { maxIps: 10, windowHours: 48 },
+          serverUserId: null,
+          serverId: null,
+          isActive: true,
+        };
+
+        const result = convertLegacyRule(legacyRule);
+
+        expect(result?.conditions.groups[0]?.conditions[0]?.params?.window_hours).toBe(48);
       });
     });
 
