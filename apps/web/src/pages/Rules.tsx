@@ -15,7 +15,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -25,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Plus,
   Pencil,
@@ -37,10 +42,21 @@ import {
   Clock,
   Power,
   PowerOff,
+  ChevronDown,
+  Sparkles,
+  Settings2,
 } from 'lucide-react';
 import { CountryMultiSelect } from '@/components/ui/country-multi-select';
 import { getCountryName } from '@/lib/utils';
-import type { Rule, RuleType, RuleParams, UnitSystem } from '@tracearr/shared';
+import type {
+  Rule,
+  RuleType,
+  RuleParams,
+  UnitSystem,
+  CreateRuleV2Input,
+  UpdateRuleV2Input,
+} from '@tracearr/shared';
+import { RuleBuilderDialog } from '@/components/rules';
 import {
   getSpeedUnit,
   getDistanceUnit,
@@ -57,6 +73,7 @@ import {
   useBulkDeleteRules,
   useSettings,
 } from '@/hooks/queries';
+import { useCreateRuleV2, useUpdateRuleV2 } from '@/hooks/queries/useRulesV2';
 import { useRowSelection } from '@/hooks/useRowSelection';
 
 const RULE_TYPE_ICONS: Record<RuleType, React.ReactNode> = {
@@ -685,10 +702,17 @@ export function Rules() {
 
   const unitSystem = settings?.unitSystem ?? 'metric';
 
+  // V1 Classic rule dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | undefined>();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+
+  // V2 Custom rule builder dialog state
+  const [isV2DialogOpen, setIsV2DialogOpen] = useState(false);
+  const [editingV2Rule, setEditingV2Rule] = useState<Rule | undefined>();
+  const createRuleV2 = useCreateRuleV2();
+  const updateRuleV2 = useUpdateRuleV2();
 
   // Row selection for bulk operations
   const { selectedIds, selectedCount, toggleRow, clearSelection, isSelected } = useRowSelection({
@@ -779,6 +803,32 @@ export function Rules() {
     setIsDialogOpen(true);
   };
 
+  // V2 Custom rule handlers
+  const openV2CreateDialog = () => {
+    setEditingV2Rule(undefined);
+    setIsV2DialogOpen(true);
+  };
+
+  const openV2EditDialog = (rule: Rule) => {
+    setEditingV2Rule(rule);
+    setIsV2DialogOpen(true);
+  };
+
+  const handleV2Save = async (data: CreateRuleV2Input | UpdateRuleV2Input) => {
+    if (editingV2Rule) {
+      await updateRuleV2.mutateAsync({ id: editingV2Rule.id, data });
+    } else {
+      await createRuleV2.mutateAsync(data as CreateRuleV2Input);
+    }
+    setIsV2DialogOpen(false);
+    setEditingV2Rule(undefined);
+  };
+
+  // Determine if a rule is V2 (has conditions/actions instead of type/params)
+  const isV2Rule = (rule: Rule): boolean => {
+    return 'conditions' in rule && rule.conditions !== null && rule.conditions !== undefined;
+  };
+
   const bulkActions: BulkAction[] = [
     {
       key: 'enable',
@@ -813,13 +863,27 @@ export function Rules() {
           <h1 className="text-3xl font-bold">{t('pages:rules.title')}</h1>
           <p className="text-muted-foreground">{t('pages:rules.description')}</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreateDialog}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               {t('pages:rules.addRule')}
+              <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
-          </DialogTrigger>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={openCreateDialog}>
+              <Settings2 className="mr-2 h-4 w-4" />
+              Classic Rule
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={openV2CreateDialog}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Custom Rule
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -868,10 +932,25 @@ export function Rules() {
               <h3 className="font-semibold">{t('pages:rules.noRulesConfigured')}</h3>
               <p className="text-muted-foreground text-sm">{t('pages:rules.createFirstRule')}</p>
             </div>
-            <Button onClick={openCreateDialog}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('pages:rules.addRule')}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('pages:rules.addRule')}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={openCreateDialog}>
+                  <Settings2 className="mr-2 h-4 w-4" />
+                  Classic Rule
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openV2CreateDialog}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Custom Rule
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardContent>
         </Card>
       ) : (
@@ -881,7 +960,12 @@ export function Rules() {
               key={rule.id}
               rule={rule}
               onEdit={() => {
-                openEditDialog(rule);
+                // Route to appropriate editor based on rule version
+                if (isV2Rule(rule)) {
+                  openV2EditDialog(rule);
+                } else {
+                  openEditDialog(rule);
+                }
               }}
               onDelete={() => {
                 setDeleteConfirmId(rule.id);
@@ -925,6 +1009,15 @@ export function Rules() {
         confirmLabel={t('common:actions.delete')}
         onConfirm={() => deleteConfirmId && handleDelete(deleteConfirmId)}
         isLoading={deleteRule.isPending}
+      />
+
+      {/* V2 Custom Rule Builder Dialog */}
+      <RuleBuilderDialog
+        open={isV2DialogOpen}
+        onOpenChange={setIsV2DialogOpen}
+        rule={editingV2Rule}
+        onSave={handleV2Save}
+        isLoading={createRuleV2.isPending || updateRuleV2.isPending}
       />
     </div>
   );

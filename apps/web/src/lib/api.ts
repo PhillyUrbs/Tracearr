@@ -66,6 +66,9 @@ import type {
   LibraryCodecsResponse,
   LibraryResolutionResponse,
   RunningTasksResponse,
+  // Rules V2 types
+  CreateRuleV2Input,
+  UpdateRuleV2Input,
 } from '@tracearr/shared';
 
 // Re-export shared types needed by frontend components
@@ -84,6 +87,35 @@ export interface StatsTimeRange {
   startDate?: string; // ISO date string
   endDate?: string; // ISO date string
   timezone?: string; // IANA timezone (e.g., 'America/Los_Angeles')
+}
+
+// Rules V2 migration response types
+export interface MigrationPreviewItem {
+  id: string;
+  name: string;
+  type: string;
+  conditions: unknown;
+  actions: unknown;
+}
+
+export interface MigrationPreviewResponse {
+  total: number;
+  alreadyMigrated: number;
+  toMigrate: number;
+  preview: MigrationPreviewItem[];
+}
+
+export interface MigrationResponse {
+  success: boolean;
+  migrated: { id: string; name: string }[];
+  skipped: { id: string; name: string; reason: string }[];
+  errors: { id: string; name: string; error: string }[];
+  summary: {
+    total: number;
+    migrated: number;
+    skipped: number;
+    failed: number;
+  };
 }
 
 // Re-export shared timezone helper for backwards compatibility
@@ -679,6 +711,22 @@ class ApiClient {
         method: 'DELETE',
         body: JSON.stringify({ ids }),
       }),
+
+    // V2 Rules API
+    createV2: (data: CreateRuleV2Input) =>
+      this.request<Rule>('/rules/v2', { method: 'POST', body: JSON.stringify(data) }),
+    updateV2: (id: string, data: UpdateRuleV2Input) =>
+      this.request<Rule>(`/rules/${id}/v2`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+    // Migration
+    migratePreview: () => this.request<MigrationPreviewResponse>('/rules/migrate/preview'),
+    migrate: (ids?: string[]) =>
+      this.request<MigrationResponse>('/rules/migrate', {
+        method: 'POST',
+        body: JSON.stringify(ids ? { ids } : {}),
+      }),
+    migrateOne: (id: string) =>
+      this.request<Rule>(`/rules/${id}/migrate`, { method: 'POST', body: '{}' }),
   };
 
   // Violations
