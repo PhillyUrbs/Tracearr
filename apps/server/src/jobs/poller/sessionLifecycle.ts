@@ -6,23 +6,30 @@
  */
 
 import { eq, and, desc, isNull, gte } from 'drizzle-orm';
-import { TIME_MS, type ActiveSession, type StreamDetailFields } from '@tracearr/shared';
+import {
+  TIME_MS,
+  type ActiveSession,
+  type StreamDetailFields,
+  type RuleV2,
+  type Session,
+  type Server,
+  type ServerUser,
+} from '@tracearr/shared';
 import { pickStreamDetailFields } from './sessionMapper.js';
 import { db } from '../../db/client.js';
-import { serverUsers, sessions } from '../../db/schema.js';
+import { serverUsers, sessions, violations } from '../../db/schema.js';
 import type { GeoLocation } from '../../services/geoip.js';
-import { ruleEngine } from '../../services/rules.js';
+import { evaluateRulesAsync } from '../../services/rules/engine.js';
+import { executeActions, type ActionResult } from '../../services/rules/executors/index.js';
+import { storeActionResults } from '../../services/rules/v2Integration.js';
+import type { EvaluationContext, EvaluationResult } from '../../services/rules/types.js';
 import {
   calculateStopDuration,
   checkWatchCompletion,
   shouldRecordSession,
 } from './stateTracker.js';
 import { sql } from 'drizzle-orm';
-import {
-  createViolationInTransaction,
-  isDuplicateViolationInTransaction,
-  type ViolationInsertResult,
-} from './violations.js';
+import { getTrustScorePenalty, type ViolationInsertResult } from './violations.js';
 import type {
   SessionCreationInput,
   SessionCreationResult,
@@ -307,7 +314,8 @@ export async function findActiveSessionsAll(
 export async function createSessionWithRulesAtomic(
   input: SessionCreationInput
 ): Promise<SessionCreationResult> {
-  const { processed, server, serverUser, geo, activeRules, recentSessions } = input;
+  const { processed, server, serverUser, geo, activeRulesV2, activeSessions, recentSessions } =
+    input;
 
   let referenceId: string | null = null;
   let qualityChange: QualityChangeResult | null = null;
@@ -404,26 +412,96 @@ export async function createSessionWithRulesAtomic(
 
   for (let attempt = 1; attempt <= MAX_SERIALIZATION_RETRIES; attempt++) {
     try {
-      const { insertedSession, violationResults } = await db.transaction(async (tx) => {
-        // Set SERIALIZABLE isolation to prevent duplicate violations from concurrent polls
-        // This ensures that if two transactions read the violations table simultaneously,
-        // one will be forced to retry after the other commits
-        await tx.execute(sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`);
+      const { insertedSession, violationResults, pendingSideEffects } = await db.transaction(
+        async (tx) => {
+          // Set SERIALIZABLE isolation to prevent duplicate violations from concurrent polls
+          // This ensures that if two transactions read the violations table simultaneously,
+          // one will be forced to retry after the other commits
+          await tx.execute(sql`SET TRANSACTION ISOLATION LEVEL SERIALIZABLE`);
 
-        // P2-8: Set transaction timeout to prevent long-running transactions
-        // Note: SET LOCAL doesn't support parameterized queries, must use raw value
-        await tx.execute(
-          sql`SET LOCAL statement_timeout = ${sql.raw(String(TRANSACTION_TIMEOUT_MS))}`
-        );
+          // P2-8: Set transaction timeout to prevent long-running transactions
+          // Note: SET LOCAL doesn't support parameterized queries, must use raw value
+          await tx.execute(
+            sql`SET LOCAL statement_timeout = ${sql.raw(String(TRANSACTION_TIMEOUT_MS))}`
+          );
 
-        const insertedRows = await tx
-          .insert(sessions)
-          .values({
+          const insertedRows = await tx
+            .insert(sessions)
+            .values({
+              serverId: server.id,
+              serverUserId: serverUser.id,
+              sessionKey: processed.sessionKey,
+              plexSessionId: processed.plexSessionId || null,
+              ratingKey: processed.ratingKey || null,
+              state: processed.state,
+              mediaType: processed.mediaType,
+              mediaTitle: processed.mediaTitle,
+              grandparentTitle: processed.grandparentTitle || null,
+              seasonNumber: processed.seasonNumber || null,
+              episodeNumber: processed.episodeNumber || null,
+              year: processed.year || null,
+              thumbPath: processed.thumbPath || null,
+              startedAt: new Date(),
+              lastSeenAt: new Date(),
+              totalDurationMs: processed.totalDurationMs || null,
+              progressMs: processed.progressMs || null,
+              lastPausedAt:
+                processed.lastPausedDate ?? (processed.state === 'paused' ? new Date() : null),
+              pausedDurationMs: 0,
+              referenceId,
+              watched: false,
+              ipAddress: processed.ipAddress,
+              geoCity: geo.city,
+              geoRegion: geo.region,
+              geoCountry: geo.countryCode ?? geo.country,
+              geoContinent: geo.continent,
+              geoPostal: geo.postal,
+              geoLat: geo.lat,
+              geoLon: geo.lon,
+              geoAsnNumber: geo.asnNumber,
+              geoAsnOrganization: geo.asnOrganization,
+              playerName: processed.playerName,
+              deviceId: processed.deviceId || null,
+              product: processed.product || null,
+              device: processed.device || null,
+              platform: processed.platform,
+              quality: processed.quality,
+              isTranscode: processed.isTranscode,
+              videoDecision: processed.videoDecision,
+              audioDecision: processed.audioDecision,
+              bitrate: processed.bitrate,
+              // Stream details (source media, stream output, transcode/subtitle info)
+              ...pickStreamDetailFields(processed),
+              // Live TV specific fields
+              channelTitle: processed.channelTitle,
+              channelIdentifier: processed.channelIdentifier,
+              channelThumb: processed.channelThumb,
+              // Music track metadata
+              artistName: processed.artistName,
+              albumName: processed.albumName,
+              trackNumber: processed.trackNumber,
+              discNumber: processed.discNumber,
+            })
+            .returning();
+
+          const inserted = insertedRows[0];
+          if (!inserted) {
+            throw new Error('Failed to insert session');
+          }
+
+          await tx
+            .update(serverUsers)
+            .set({
+              lastActivityAt: sql`GREATEST(COALESCE(${serverUsers.lastActivityAt}, ${inserted.startedAt}), ${inserted.startedAt})`,
+            })
+            .where(eq(serverUsers.id, serverUser.id));
+
+          // Build session object for rule evaluation (matches Session type)
+          const session: Session = {
+            id: inserted.id,
             serverId: server.id,
             serverUserId: serverUser.id,
             sessionKey: processed.sessionKey,
-            plexSessionId: processed.plexSessionId || null,
-            ratingKey: processed.ratingKey || null,
             state: processed.state,
             mediaType: processed.mediaType,
             mediaTitle: processed.mediaTitle,
@@ -432,15 +510,17 @@ export async function createSessionWithRulesAtomic(
             episodeNumber: processed.episodeNumber || null,
             year: processed.year || null,
             thumbPath: processed.thumbPath || null,
-            startedAt: new Date(),
-            lastSeenAt: new Date(),
+            ratingKey: processed.ratingKey || null,
+            externalSessionId: null,
+            startedAt: inserted.startedAt,
+            stoppedAt: null,
+            durationMs: null,
             totalDurationMs: processed.totalDurationMs || null,
             progressMs: processed.progressMs || null,
-            lastPausedAt:
-              processed.lastPausedDate ?? (processed.state === 'paused' ? new Date() : null),
-            pausedDurationMs: 0,
-            referenceId,
-            watched: false,
+            lastPausedAt: inserted.lastPausedAt,
+            pausedDurationMs: inserted.pausedDurationMs,
+            referenceId: inserted.referenceId,
+            watched: inserted.watched,
             ipAddress: processed.ipAddress,
             geoCity: geo.city,
             geoRegion: geo.region,
@@ -472,120 +552,146 @@ export async function createSessionWithRulesAtomic(
             albumName: processed.albumName,
             trackNumber: processed.trackNumber,
             discNumber: processed.discNumber,
-          })
-          .returning();
+          };
 
-        const inserted = insertedRows[0];
-        if (!inserted) {
-          throw new Error('Failed to insert session');
-        }
+          // Build V2 evaluation context
+          const serverObj: Server = {
+            id: server.id,
+            name: server.name,
+            type: server.type,
+            url: '', // Not needed for rule evaluation
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
 
-        await tx
-          .update(serverUsers)
-          .set({
-            lastActivityAt: sql`GREATEST(COALESCE(${serverUsers.lastActivityAt}, ${inserted.startedAt}), ${inserted.startedAt})`,
-          })
-          .where(eq(serverUsers.id, serverUser.id));
+          const serverUserObj: ServerUser = {
+            id: serverUser.id,
+            userId: '', // Not needed for rule evaluation
+            serverId: server.id,
+            externalId: '',
+            username: serverUser.username,
+            email: null,
+            thumbUrl: serverUser.thumbUrl,
+            isServerAdmin: false,
+            trustScore: serverUser.trustScore,
+            sessionCount: serverUser.sessionCount,
+            joinedAt: null,
+            lastActivityAt: serverUser.lastActivityAt,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
 
-        // Build session object for rule evaluation
-        const session = {
-          id: inserted.id,
-          serverId: server.id,
-          serverUserId: serverUser.id,
-          sessionKey: processed.sessionKey,
-          state: processed.state,
-          mediaType: processed.mediaType,
-          mediaTitle: processed.mediaTitle,
-          grandparentTitle: processed.grandparentTitle || null,
-          seasonNumber: processed.seasonNumber || null,
-          episodeNumber: processed.episodeNumber || null,
-          year: processed.year || null,
-          thumbPath: processed.thumbPath || null,
-          ratingKey: processed.ratingKey || null,
-          externalSessionId: null,
-          startedAt: inserted.startedAt,
-          stoppedAt: null,
-          durationMs: null,
-          totalDurationMs: processed.totalDurationMs || null,
-          progressMs: processed.progressMs || null,
-          lastPausedAt: inserted.lastPausedAt,
-          pausedDurationMs: inserted.pausedDurationMs,
-          referenceId: inserted.referenceId,
-          watched: inserted.watched,
-          ipAddress: processed.ipAddress,
-          geoCity: geo.city,
-          geoRegion: geo.region,
-          geoCountry: geo.countryCode ?? geo.country,
-          geoContinent: geo.continent,
-          geoPostal: geo.postal,
-          geoLat: geo.lat,
-          geoLon: geo.lon,
-          geoAsnNumber: geo.asnNumber,
-          geoAsnOrganization: geo.asnOrganization,
-          playerName: processed.playerName,
-          deviceId: processed.deviceId || null,
-          product: processed.product || null,
-          device: processed.device || null,
-          platform: processed.platform,
-          quality: processed.quality,
-          isTranscode: processed.isTranscode,
-          videoDecision: processed.videoDecision,
-          audioDecision: processed.audioDecision,
-          bitrate: processed.bitrate,
-          // Stream details (source media, stream output, transcode/subtitle info)
-          ...pickStreamDetailFields(processed),
-          // Live TV specific fields
-          channelTitle: processed.channelTitle,
-          channelIdentifier: processed.channelIdentifier,
-          channelThumb: processed.channelThumb,
-          // Music track metadata
-          artistName: processed.artistName,
-          albumName: processed.albumName,
-          trackNumber: processed.trackNumber,
-          discNumber: processed.discNumber,
-        };
+          const baseContext: Omit<EvaluationContext, 'rule'> = {
+            session,
+            serverUser: serverUserObj,
+            server: serverObj,
+            activeSessions,
+            recentSessions,
+          };
 
-        // Evaluate rules
-        const ruleResults = await ruleEngine.evaluateSession(session, activeRules, recentSessions);
+          // Evaluate V2 rules
+          const ruleResults = await evaluateRulesAsync(baseContext, activeRulesV2);
 
-        // Create violations within same transaction using transaction-aware dedup
-        const createdViolations: ViolationInsertResult[] = [];
-        for (const result of ruleResults) {
-          // Issue #67: Use result.rule directly instead of .find() to get correct rule attribution
-          if (result.violated && result.rule) {
-            const matchingRule = result.rule;
-            const relatedSessionIds = (result.data?.relatedSessionIds as string[]) || [];
+          // Process matched rules - create violations within transaction, queue side effects
+          const createdViolations: ViolationInsertResult[] = [];
+          const pendingSideEffects: Array<{
+            context: EvaluationContext;
+            result: EvaluationResult;
+            rule: RuleV2;
+          }> = [];
 
-            // Use transaction-aware duplicate check (reads within SERIALIZABLE isolation)
-            const isDuplicate = await isDuplicateViolationInTransaction(
-              tx,
-              serverUser.id,
-              matchingRule.type,
-              inserted.id,
-              relatedSessionIds
-            );
+          for (const result of ruleResults) {
+            if (!result.matched) continue;
 
-            if (isDuplicate) {
-              continue;
+            // Find the rule that produced this result
+            const rule = activeRulesV2.find((r) => r.id === result.ruleId);
+            if (!rule) continue;
+
+            // Check for create_violation action
+            const violationAction = result.actions.find((a) => a.type === 'create_violation');
+
+            if (violationAction?.type === 'create_violation') {
+              // Create violation within transaction for atomicity
+              const severity = violationAction.severity;
+              const trustPenalty = getTrustScorePenalty(severity);
+
+              // Insert violation
+              const insertedViolations = await tx
+                .insert(violations)
+                .values({
+                  ruleId: rule.id,
+                  serverUserId: serverUser.id,
+                  sessionId: inserted.id,
+                  severity,
+                  ruleType: null, // V2 rules don't have a type field
+                  data: {
+                    ruleName: rule.name,
+                    matchedGroups: result.matchedGroups,
+                    sessionKey: session.sessionKey,
+                    mediaTitle: session.mediaTitle,
+                    ipAddress: session.ipAddress,
+                  },
+                })
+                .onConflictDoNothing()
+                .returning();
+
+              const violation = insertedViolations[0];
+
+              if (violation) {
+                // Decrease trust score
+                await tx
+                  .update(serverUsers)
+                  .set({
+                    trustScore: sql`GREATEST(0, ${serverUsers.trustScore} - ${trustPenalty})`,
+                    updatedAt: new Date(),
+                  })
+                  .where(eq(serverUsers.id, serverUser.id));
+
+                // Create rule info for ViolationInsertResult (V2 rules don't have type)
+                const ruleInfo = {
+                  id: rule.id,
+                  name: rule.name,
+                  type: null, // V2 rules don't have a type
+                };
+
+                createdViolations.push({
+                  violation,
+                  rule: ruleInfo,
+                  trustPenalty,
+                });
+              }
             }
 
-            const violationResult = await createViolationInTransaction(
-              tx,
-              matchingRule.id,
-              serverUser.id,
-              inserted.id,
-              result,
-              matchingRule
-            );
-            // Only add if insert succeeded (not blocked by DB constraint)
-            if (violationResult) {
-              createdViolations.push(violationResult);
+            // Queue non-violation actions for execution after transaction
+            const sideEffectActions = result.actions.filter((a) => a.type !== 'create_violation');
+            if (sideEffectActions.length > 0) {
+              pendingSideEffects.push({
+                context: { ...baseContext, rule },
+                result: { ...result, actions: sideEffectActions },
+                rule,
+              });
             }
           }
-        }
 
-        return { insertedSession: inserted, violationResults: createdViolations };
-      });
+          return {
+            insertedSession: inserted,
+            violationResults: createdViolations,
+            pendingSideEffects,
+          };
+        }
+      );
+
+      // Execute side effect actions after transaction commits
+      for (const { context, result, rule } of pendingSideEffects) {
+        const actionResults: ActionResult[] = await executeActions(context, result.actions);
+
+        // Find violation ID if one was created for this rule
+        const violationId =
+          violationResults.find((v) => v.rule.id === rule.id)?.violation.id ?? null;
+
+        // Store results for UI
+        await storeActionResults(violationId, result.ruleId, actionResults);
+      }
 
       // Transaction succeeded, return result
       return {
@@ -688,8 +794,16 @@ export async function stopSessionAtomic(input: SessionStopInput): Promise<Sessio
 export async function handleMediaChangeAtomic(
   input: MediaChangeInput
 ): Promise<MediaChangeResult | null> {
-  const { existingSession, processed, server, serverUser, geo, activeRules, recentSessions } =
-    input;
+  const {
+    existingSession,
+    processed,
+    server,
+    serverUser,
+    geo,
+    activeRulesV2,
+    activeSessions,
+    recentSessions,
+  } = input;
 
   console.log(
     `[SessionLifecycle] Media change detected: ${existingSession.ratingKey} -> ${processed.ratingKey}`
@@ -715,7 +829,8 @@ export async function handleMediaChangeAtomic(
     server,
     serverUser,
     geo,
-    activeRules,
+    activeRulesV2,
+    activeSessions,
     recentSessions,
   });
 

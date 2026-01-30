@@ -22,7 +22,7 @@ import { lookupGeoIP } from '../services/plexGeoip.js';
 import { getGeoIPSettings } from '../routes/settings.js';
 import { mapMediaSession } from './poller/sessionMapper.js';
 import { calculatePauseAccumulation, checkWatchCompletion } from './poller/stateTracker.js';
-import { getActiveRules, batchGetRecentUserSessions } from './poller/database.js';
+import { getActiveRulesV2, batchGetRecentUserSessions } from './poller/database.js';
 import { broadcastViolations } from './poller/violations.js';
 import {
   createSessionWithRulesAtomic,
@@ -451,6 +451,9 @@ async function createNewSession(
       username: serverUsers.username,
       thumbUrl: serverUsers.thumbUrl,
       identityName: users.name,
+      trustScore: serverUsers.trustScore,
+      sessionCount: serverUsers.sessionCount,
+      lastActivityAt: serverUsers.lastActivityAt,
     })
     .from(serverUsers)
     .innerJoin(users, eq(serverUsers.userId, users.id))
@@ -470,6 +473,9 @@ async function createNewSession(
     username: serverUserFromDb.username,
     thumbUrl: serverUserFromDb.thumbUrl,
     identityName: serverUserFromDb.identityName,
+    trustScore: serverUserFromDb.trustScore,
+    sessionCount: serverUserFromDb.sessionCount,
+    lastActivityAt: serverUserFromDb.lastActivityAt,
   };
 
   // Get GeoIP location (uses Plex API if enabled, falls back to MaxMind)
@@ -481,8 +487,9 @@ async function createNewSession(
     return;
   }
 
-  const activeRules = await getActiveRules();
+  const activeRulesV2 = await getActiveRulesV2();
   const recentSessions = await batchGetRecentUserSessions([userDetail.id]);
+  const activeSessions = await cacheService.getAllActiveSessions();
 
   const result = await cacheService.withSessionCreateLock(
     serverId,
@@ -502,7 +509,8 @@ async function createNewSession(
         server: { id: server.id, name: server.name, type: server.type },
         serverUser: userDetail,
         geo,
-        activeRules,
+        activeRulesV2,
+        activeSessions,
         recentSessions: recentSessions.get(userDetail.id) ?? [],
       });
     }

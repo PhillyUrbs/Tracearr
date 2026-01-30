@@ -162,7 +162,7 @@ export function UserDetail() {
           <div>
             <p className="font-medium">{row.original.rule.name}</p>
             <p className="text-muted-foreground text-xs capitalize">
-              {row.original.rule.type.replace(/_/g, ' ')}
+              {row.original.rule.type?.replace(/_/g, ' ') ?? 'Custom Rule'}
             </p>
           </div>
         ),

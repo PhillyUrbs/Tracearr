@@ -13,7 +13,8 @@ import {
   SESSION_LIMITS,
   type ActiveSession,
   type SessionState,
-  type Rule,
+  type RuleV2,
+  type Session,
 } from '@tracearr/shared';
 import { db } from '../../db/client.js';
 import { servers, serverUsers, sessions, users } from '../../db/schema.js';
@@ -26,7 +27,7 @@ import { sseManager } from '../../services/sseManager.js';
 
 import type { PollerConfig, ServerWithToken, ServerProcessingResult } from './types.js';
 import { mapMediaSession } from './sessionMapper.js';
-import { batchGetRecentUserSessions, getActiveRules } from './database.js';
+import { batchGetRecentUserSessions, getActiveRulesV2 } from './database.js';
 import {
   calculatePauseAccumulation,
   checkWatchCompletion,
@@ -85,8 +86,9 @@ const ACTIVE_SESSION_CHUNK_BOUND_MS = 7 * 24 * 60 * 60 * 1000;
  */
 async function processServerSessions(
   server: ServerWithToken,
-  activeRules: Rule[],
-  cachedSessionKeys: Set<string>
+  activeRulesV2: RuleV2[],
+  cachedSessionKeys: Set<string>,
+  activeSessions: Session[] = []
 ): Promise<ServerProcessingResult> {
   const newSessions: ActiveSession[] = [];
   const updatedSessions: ActiveSession[] = [];
@@ -152,6 +154,7 @@ async function processServerSessions(
         isServerAdmin: serverUsers.isServerAdmin,
         trustScore: serverUsers.trustScore,
         sessionCount: serverUsers.sessionCount,
+        lastActivityAt: serverUsers.lastActivityAt,
         createdAt: serverUsers.createdAt,
         updatedAt: serverUsers.updatedAt,
         identityName: users.name,
@@ -310,8 +313,19 @@ async function processServerSessions(
             username: serverUserFromCache.username,
             thumbUrl: serverUserFromCache.thumbUrl,
             identityName: serverUserFromCache.identityName,
+            trustScore: serverUserFromCache.trustScore,
+            sessionCount: serverUserFromCache.sessionCount,
+            lastActivityAt: serverUserFromCache.lastActivityAt,
           }
-        : { id: serverUserId, username: 'Unknown', thumbUrl: null, identityName: null };
+        : {
+            id: serverUserId,
+            username: 'Unknown',
+            thumbUrl: null,
+            identityName: null,
+            trustScore: 100,
+            sessionCount: 0,
+            lastActivityAt: null,
+          };
 
       // Get GeoIP location (uses Plex API if enabled, falls back to MaxMind)
       const geo: GeoLocation = await lookupGeoIP(processed.ipAddress, usePlexGeoip);
@@ -374,7 +388,8 @@ async function processServerSessions(
               server: { id: server.id, name: server.name, type: server.type },
               serverUser: userDetail,
               geo,
-              activeRules,
+              activeRulesV2,
+              activeSessions,
               recentSessions,
             });
 
@@ -504,7 +519,8 @@ async function processServerSessions(
                 server: { id: server.id, name: server.name, type: server.type },
                 serverUser: userDetail,
                 geo,
-                activeRules,
+                activeRulesV2,
+                activeSessions,
                 recentSessions,
               });
             }
@@ -543,7 +559,8 @@ async function processServerSessions(
             server: { id: server.id, name: server.name, type: server.type },
             serverUser: userDetail,
             geo,
-            activeRules,
+            activeRulesV2,
+            activeSessions,
             recentSessions,
           });
 
@@ -732,8 +749,8 @@ async function pollServers(): Promise<void> {
     const cachedSessions = cacheService ? await cacheService.getAllActiveSessions() : [];
     const cachedSessionKeys = new Set(cachedSessions.map((s) => `${s.serverId}:${s.sessionKey}`));
 
-    // Get active rules
-    const activeRules = await getActiveRules();
+    // Get active V2 rules
+    const activeRulesV2 = await getActiveRulesV2();
 
     // Collect results from all servers
     const allNewSessions: ActiveSession[] = [];
@@ -748,7 +765,12 @@ async function pollServers(): Promise<void> {
       const wasHealthy = cacheService ? await cacheService.getServerHealth(server.id) : null;
 
       const { success, newSessions, stoppedSessionKeys, updatedSessions } =
-        await processServerSessions(serverWithToken, activeRules, cachedSessionKeys);
+        await processServerSessions(
+          serverWithToken,
+          activeRulesV2,
+          cachedSessionKeys,
+          cachedSessions
+        );
 
       // Track health state and notify on transitions
       if (cacheService) {
@@ -994,8 +1016,8 @@ export async function triggerReconciliationPoll(): Promise<void> {
     const cachedSessions = cacheService ? await cacheService.getAllActiveSessions() : [];
     const cachedSessionKeys = new Set(cachedSessions.map((s) => `${s.serverId}:${s.sessionKey}`));
 
-    // Get active rules
-    const activeRules = await getActiveRules();
+    // Get active V2 rules
+    const activeRulesV2 = await getActiveRulesV2();
 
     // Collect results from all SSE servers
     const allNewSessions: ActiveSession[] = [];
@@ -1007,8 +1029,9 @@ export async function triggerReconciliationPoll(): Promise<void> {
       const serverWithToken = server as ServerWithToken;
       const { newSessions, stoppedSessionKeys, updatedSessions } = await processServerSessions(
         serverWithToken,
-        activeRules,
-        cachedSessionKeys
+        activeRulesV2,
+        cachedSessionKeys,
+        cachedSessions
       );
       allNewSessions.push(...newSessions);
       allStoppedKeys.push(...stoppedSessionKeys);

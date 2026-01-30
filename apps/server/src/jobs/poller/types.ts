@@ -10,6 +10,7 @@ import type {
   SessionState,
   Rule,
   RuleParams,
+  RuleV2,
   ActiveSession,
   StreamDetailFields,
 } from '@tracearr/shared';
@@ -219,11 +220,16 @@ export interface SessionCreationInput {
     username: string;
     thumbUrl: string | null;
     identityName: string | null;
+    trustScore: number;
+    sessionCount: number;
+    lastActivityAt: Date | null;
   };
   /** GeoIP location data */
   geo: GeoLocation;
-  /** Active rules to evaluate */
-  activeRules: Rule[];
+  /** Active V2 rules to evaluate */
+  activeRulesV2: RuleV2[];
+  /** Active sessions for rule context (e.g., concurrent streams) */
+  activeSessions: Session[];
   /** Recent sessions for rule evaluation context */
   recentSessions: Session[];
 }
@@ -303,11 +309,16 @@ export interface MediaChangeInput {
     username: string;
     thumbUrl: string | null;
     identityName: string | null;
+    trustScore: number;
+    sessionCount: number;
+    lastActivityAt: Date | null;
   };
   /** GeoIP location data */
   geo: GeoLocation;
-  /** Active rules to evaluate */
-  activeRules: Rule[];
+  /** Active V2 rules to evaluate */
+  activeRulesV2: RuleV2[];
+  /** Active sessions for rule context (e.g., concurrent streams) */
+  activeSessions: Session[];
   /** Recent sessions for rule evaluation context */
   recentSessions: Session[];
 }
@@ -332,4 +343,4 @@ export interface MediaChangeResult {
 // Re-exports for convenience
 // ============================================================================
 
-export type { Session, SessionState, Rule, RuleParams };
+export type { Session, SessionState, Rule, RuleParams, RuleV2 };

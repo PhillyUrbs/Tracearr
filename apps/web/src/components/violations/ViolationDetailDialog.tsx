@@ -68,7 +68,9 @@ export function ViolationDetailDialog({
   const avatarUrl = getAvatarUrl(violation.user.serverId, violation.user.thumbUrl, 80);
   const description = getViolationDescription(violation, unitSystem);
   const details = getViolationDetails(violation, unitSystem);
-  const ruleIcon = ruleIcons[violation.rule.type] ?? <AlertTriangle className="h-4 w-4" />;
+  const ruleIcon = (violation.rule.type && ruleIcons[violation.rule.type]) ?? (
+    <AlertTriangle className="h-4 w-4" />
+  );
   const isPending = !violation.acknowledgedAt;
 
   // Helper function to check if a value has been seen before
@@ -201,7 +203,7 @@ export function ViolationDetailDialog({
               <div>
                 <p className="font-medium">{violation.rule.name}</p>
                 <p className="text-muted-foreground text-xs capitalize">
-                  {violation.rule.type.replace(/_/g, ' ')}
+                  {violation.rule.type?.replace(/_/g, ' ') ?? 'Custom Rule'}
                 </p>
               </div>
             </div>

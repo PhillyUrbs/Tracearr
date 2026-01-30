@@ -244,12 +244,14 @@ export function Violations() {
           return (
             <div className="flex items-center gap-2">
               <div className="bg-muted flex h-8 w-8 items-center justify-center rounded">
-                {ruleIcons[violation.rule.type] ?? <AlertTriangle className="h-4 w-4" />}
+                {(violation.rule.type && ruleIcons[violation.rule.type]) ?? (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
               </div>
               <div>
                 <p className="font-medium">{violation.rule.name}</p>
                 <p className="text-muted-foreground text-xs capitalize">
-                  {violation.rule.type.replace(/_/g, ' ')}
+                  {violation.rule.type?.replace(/_/g, ' ') ?? 'Custom Rule'}
                 </p>
               </div>
             </div>
