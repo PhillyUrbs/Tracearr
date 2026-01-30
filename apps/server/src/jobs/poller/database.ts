@@ -12,6 +12,9 @@ import {
   type Session,
   type Rule,
   type RuleParams,
+  type RuleV2,
+  type RuleConditions,
+  type RuleActions,
 } from '@tracearr/shared';
 import { db } from '../../db/client.js';
 import { sessions, rules } from '../../db/schema.js';
@@ -98,6 +101,37 @@ export async function getActiveRules(): Promise<Rule[]> {
     params: r.params as unknown as RuleParams,
     serverUserId: r.serverUserId,
     isActive: r.isActive,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  }));
+}
+
+/**
+ * Get all active V2 rules (rules with conditions/actions defined).
+ *
+ * V2 rules use the new conditions/actions format instead of the legacy type/params.
+ * These rules are evaluated by the session lifecycle event system.
+ *
+ * @returns Array of active RuleV2 objects
+ *
+ * @example
+ * const rulesV2 = await getActiveRulesV2();
+ * // Evaluate session events against these rules
+ */
+export async function getActiveRulesV2(): Promise<RuleV2[]> {
+  const activeRules = await db
+    .select()
+    .from(rules)
+    .where(and(eq(rules.isActive, true), isNotNull(rules.conditions)));
+
+  return activeRules.map((r) => ({
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    serverId: r.serverId,
+    isActive: r.isActive,
+    conditions: r.conditions as RuleConditions,
+    actions: r.actions as RuleActions,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }));
