@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { SeverityBadge } from '@/components/violations/SeverityBadge';
+import { ActionResultsList } from '@/components/violations/ActionResultsList';
 import { getAvatarUrl } from '@/components/users/utils';
 import { getCountryName } from '@/lib/utils';
 import { getViolationDescription, getViolationDetails } from '@/utils/violationDescription';
@@ -583,6 +584,14 @@ export function ViolationDetailDialog({
                   })}
                 </div>
               </div>
+            </>
+          )}
+
+          {/* Action Results (V2 Rules) */}
+          {violation.actionResults && violation.actionResults.length > 0 && (
+            <>
+              <Separator />
+              <ActionResultsList results={violation.actionResults} />
             </>
           )}
 

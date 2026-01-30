@@ -11,7 +11,15 @@ import {
   type ViolationSortField,
 } from '@tracearr/shared';
 import { db } from '../db/client.js';
-import { violations, rules, serverUsers, sessions, servers, users } from '../db/schema.js';
+import {
+  violations,
+  rules,
+  serverUsers,
+  sessions,
+  servers,
+  users,
+  ruleActionResults,
+} from '../db/schema.js';
 import { hasServerAccess } from '../utils/serverFiltering.js';
 import { getTrustScorePenalty } from '../jobs/poller/violations.js';
 
@@ -512,6 +520,54 @@ export const violationRoutes: FastifyPluginAsync = async (app) => {
       console.error('[Violations] Failed to batch fetch historical/related data:', error);
     }
 
+    // Batch fetch action results for all violations
+    const actionResultsByViolation = new Map<
+      string,
+      Array<{
+        actionType: string;
+        success: boolean;
+        skipped: boolean | null;
+        skipReason: string | null;
+        errorMessage: string | null;
+        executedAt: Date;
+      }>
+    >();
+
+    try {
+      const violationIds = violationData.map((v) => v.id);
+      if (violationIds.length > 0) {
+        const actionResults = await db
+          .select({
+            violationId: ruleActionResults.violationId,
+            actionType: ruleActionResults.actionType,
+            success: ruleActionResults.success,
+            skipped: ruleActionResults.skipped,
+            skipReason: ruleActionResults.skipReason,
+            errorMessage: ruleActionResults.errorMessage,
+            executedAt: ruleActionResults.executedAt,
+          })
+          .from(ruleActionResults)
+          .where(inArray(ruleActionResults.violationId, violationIds));
+
+        // Group by violation ID
+        for (const result of actionResults) {
+          if (!result.violationId) continue;
+          const existing = actionResultsByViolation.get(result.violationId) ?? [];
+          existing.push({
+            actionType: result.actionType,
+            success: result.success,
+            skipped: result.skipped,
+            skipReason: result.skipReason,
+            errorMessage: result.errorMessage,
+            executedAt: result.executedAt,
+          });
+          actionResultsByViolation.set(result.violationId, existing);
+        }
+      }
+    } catch (error) {
+      console.error('[Violations] Failed to batch fetch action results:', error);
+    }
+
     // Transform flat data into nested structure expected by frontend
     const formattedData = violationData.map((v) => {
       // Fetch related sessions - prioritize using relatedSessionIds from violation data
@@ -643,6 +699,18 @@ export const violationRoutes: FastifyPluginAsync = async (app) => {
           userHistory.previousLocations.length > 0
             ? userHistory
             : undefined,
+        actionResults: (() => {
+          const results = actionResultsByViolation.get(v.id);
+          if (!results || results.length === 0) return undefined;
+          return results.map((r) => ({
+            actionType: r.actionType,
+            success: r.success,
+            skipped: r.skipped ?? false,
+            skipReason: r.skipReason ?? undefined,
+            errorMessage: r.errorMessage ?? undefined,
+            executedAt: r.executedAt.toISOString(),
+          }));
+        })(),
       };
     });
 

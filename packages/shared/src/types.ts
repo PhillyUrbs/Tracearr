@@ -652,6 +652,8 @@ export interface ViolationWithDetails extends Violation {
     previousDevices: string[];
     previousLocations: Array<{ city: string | null; country: string | null; ip: string }>;
   };
+  /** Action results from V2 rule execution */
+  actionResults?: ActionResult[];
 }
 
 // Stats types
