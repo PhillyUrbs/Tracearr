@@ -417,7 +417,8 @@ export const violations = pgTable(
       .$type<(typeof violationSeverityEnum)[number]>(),
     // Denormalized rule type for unique constraint (rules.type copied here)
     // This enables the partial unique index without requiring a join
-    ruleType: varchar('rule_type', { length: 50 }).notNull().$type<(typeof ruleTypeEnum)[number]>(),
+    // Nullable for V2 rules which don't have a type field
+    ruleType: varchar('rule_type', { length: 50 }).$type<(typeof ruleTypeEnum)[number] | null>(),
     data: jsonb('data').notNull().$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
