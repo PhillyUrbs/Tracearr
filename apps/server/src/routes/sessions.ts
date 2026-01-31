@@ -1083,7 +1083,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     const serversData = serversResult.map((row) => ({
       id: row.id,
       name: row.name,
-      type: row.type as 'plex' | 'jellyfin' | 'emby',
+      type: row.type,
     }));
 
     // Get countries that have sessions
