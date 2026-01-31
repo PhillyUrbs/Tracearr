@@ -198,6 +198,11 @@ function getDynamicOptions(
         value: s.id,
         label: s.name,
       }));
+    case 'user_id':
+      return filterOptions.users?.map((u) => ({
+        value: u.id,
+        label: u.identityName || u.username,
+      }));
     default:
       return undefined;
   }
