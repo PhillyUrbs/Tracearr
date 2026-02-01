@@ -332,6 +332,13 @@ export const streamQualityFieldSchema = z.enum([
   'source_bitrate_mbps',
 ]);
 
+export const transcodingConditionValueSchema = z.enum([
+  'video',
+  'audio',
+  'video_or_audio',
+  'neither',
+]);
+
 export const userAttributeFieldSchema = z.enum(['user_id', 'trust_score', 'account_age_days']);
 
 export const deviceClientFieldSchema = z.enum(['device_type', 'client_name', 'platform']);
