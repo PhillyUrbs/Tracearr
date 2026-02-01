@@ -163,14 +163,80 @@ export function startNotificationWorker(): void {
 }
 
 /**
+ * Process a rule notification directly to specified channels (bypasses routing).
+ * When a rule action says "send notification to [channels]", we honor that directly.
+ */
+async function processRuleNotification(
+  payload: ViolationWithDetails,
+  settings: Awaited<ReturnType<typeof getNotificationSettings>>
+): Promise<void> {
+  const data = payload.data as Record<string, unknown> | null;
+  const channels = (data?.channels as string[]) ?? [];
+  const customTitle = (data?.customTitle as string) ?? 'Rule Triggered';
+  const customMessage = (data?.customMessage as string) ?? 'A rule was triggered';
+
+  // Build a notification payload for the agents
+  const notificationPayload = {
+    event: 'violation_detected' as const,
+    title: customTitle,
+    message: customMessage,
+    severity: 'warning' as const,
+    timestamp: new Date().toISOString(),
+    context: { type: 'violation_detected' as const, violation: payload },
+  };
+
+  // Send to each specified channel
+  for (const channel of channels) {
+    switch (channel) {
+      case 'discord':
+        if (settings.discordWebhookUrl) {
+          const discordSettings = {
+            ...settings,
+            customWebhookUrl: null, // Don't send to webhook, just discord
+          };
+          await notificationManager.sendAll(notificationPayload, discordSettings);
+        }
+        break;
+
+      case 'webhook':
+        if (settings.customWebhookUrl) {
+          const webhookSettings = {
+            ...settings,
+            discordWebhookUrl: null, // Don't send to discord, just webhook
+          };
+          await notificationManager.sendAll(notificationPayload, webhookSettings);
+        }
+        break;
+
+      case 'push':
+        await pushNotificationService.notifyViolation(payload);
+        break;
+
+      // 'email' not implemented yet
+    }
+  }
+}
+
+/**
  * Process a single notification job
  */
 async function processNotificationJob(job: Job<NotificationJobData>): Promise<void> {
   const { type, payload } = job.data;
 
-  // Load current settings and channel routing for each job
-  // (settings/routing may change between enqueue and process)
+  // Load current settings for each job (settings may change between enqueue and process)
   const settings = await getNotificationSettings();
+
+  // Check if this is a rule-triggered notification that specifies channels directly
+  if (type === 'violation') {
+    const data = payload.data as Record<string, unknown> | null;
+    if (data?.ruleNotification === true && Array.isArray(data?.channels)) {
+      // Rule notifications bypass routing - they specify channels directly
+      await processRuleNotification(payload, settings);
+      return;
+    }
+  }
+
+  // Standard notifications use channel routing
   const eventType = JOB_TYPE_TO_EVENT_TYPE[type];
   const routing = await getChannelRouting(eventType);
 

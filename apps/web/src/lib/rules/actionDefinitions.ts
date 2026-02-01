@@ -10,7 +10,6 @@ import type {
   ViolationSeverity,
   NotificationChannelV2,
   Action,
-  SessionTarget,
 } from '@tracearr/shared';
 
 // Config field types for rendering action configuration

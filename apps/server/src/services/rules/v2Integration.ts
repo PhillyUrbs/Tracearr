@@ -87,10 +87,9 @@ export function createActionExecutorDeps(redis: Redis): ActionExecutorDeps {
      * Send notification via the notification queue.
      * Uses dynamic import to avoid circular dependency.
      *
-     * Note: The V2 notify action specifies channels, but the notification queue
-     * routes based on event type and respects global settings. The channels
-     * preference is stored in violation.data for future use when direct channel
-     * routing is implemented.
+     * The V2 notify action specifies channels directly (e.g., ['webhook', 'push']).
+     * These are passed to the notification queue which sends to those channels
+     * without applying the global channel routing rules.
      */
     sendNotification: async (params) => {
       // Dynamic import to avoid circular dependencies
