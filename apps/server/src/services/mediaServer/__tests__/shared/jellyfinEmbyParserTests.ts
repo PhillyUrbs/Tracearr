@@ -967,6 +967,48 @@ export function createMusicTrackTests(parsers: ParserFunctions, serverType: 'jel
       expect(session!.music?.albumName).toBe('Some Album');
     });
 
+    it('should use track artist over album artist for compilation albums', () => {
+      const rawSession = {
+        Id: 'music-session-compilation',
+        NowPlayingItem: {
+          Id: 'track-compilation',
+          Name: 'Shake It Off',
+          Type: 'Audio',
+          Artists: ['Taylor Swift'],
+          AlbumArtist: 'Various Artists',
+          Album: 'Now Thats What I Call Music',
+          IndexNumber: 5,
+        },
+        PlayState: {},
+      };
+
+      const session = parsers.parseSession(rawSession);
+
+      expect(session).not.toBeNull();
+      expect(session!.music?.artistName).toBe('Taylor Swift');
+      expect(session!.music?.albumName).toBe('Now Thats What I Call Music');
+    });
+
+    it('should fall back to AlbumArtist when Artists array is empty', () => {
+      const rawSession = {
+        Id: 'music-session-empty-artists',
+        NowPlayingItem: {
+          Id: 'track-empty',
+          Name: 'Unknown Track',
+          Type: 'Audio',
+          Artists: [],
+          AlbumArtist: 'Various Artists',
+          Album: 'Compilation Album',
+        },
+        PlayState: {},
+      };
+
+      const session = parsers.parseSession(rawSession);
+
+      expect(session).not.toBeNull();
+      expect(session!.music?.artistName).toBe('Various Artists');
+    });
+
     it('should parse music track with minimal metadata', () => {
       const rawSession = {
         Id: 'music-session-3',

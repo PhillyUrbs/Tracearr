@@ -368,7 +368,7 @@ export function extractMusicMetadata(nowPlaying: Record<string, unknown>): {
 
   return {
     artistName:
-      parseOptionalBoundedString(nowPlaying.AlbumArtist, 255) || artistFromList || undefined,
+      artistFromList || parseOptionalBoundedString(nowPlaying.AlbumArtist, 255) || undefined,
     albumName: parseOptionalBoundedString(nowPlaying.Album, 255),
     trackNumber: parseOptionalNumber(nowPlaying.IndexNumber),
     discNumber: parseOptionalNumber(nowPlaying.ParentIndexNumber),
