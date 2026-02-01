@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { NumericInput } from '@/components/ui/numeric-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Select,
   SelectContent,
@@ -47,11 +48,16 @@ export function ConditionRow({
   // Handle field change - reset operator and value
   const handleFieldChange = (newField: ConditionField) => {
     const newFieldDef = FIELD_DEFINITIONS[newField];
+    // Build params based on field capabilities
+    const params: { window_hours?: number; exclude_same_device?: boolean } = {};
+    if (newFieldDef.hasWindowHours) params.window_hours = 24;
+    if (newFieldDef.hasExcludeSameDevice) params.exclude_same_device = true;
+
     onChange({
       field: newField,
       operator: getDefaultOperatorForField(newField),
       value: getDefaultValueForField(newField),
-      ...(newFieldDef.hasWindowHours ? { params: { window_hours: 24 } } : {}),
+      ...(Object.keys(params).length > 0 ? { params } : {}),
     });
   };
 
@@ -88,6 +94,14 @@ export function ConditionRow({
     onChange({
       ...condition,
       params: { ...condition.params, window_hours: hours },
+    });
+  };
+
+  // Handle exclude same device change
+  const handleExcludeSameDeviceChange = (exclude: boolean) => {
+    onChange({
+      ...condition,
+      params: { ...condition.params, exclude_same_device: exclude },
     });
   };
 
@@ -154,6 +168,25 @@ export function ConditionRow({
           />
           <span className="text-muted-foreground text-sm">hrs</span>
         </div>
+      )}
+
+      {/* Exclude Same Device (for cross-session comparisons) */}
+      {fieldDef.hasExcludeSameDevice && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <label className="flex h-10 cursor-pointer items-center gap-2 whitespace-nowrap">
+              <Checkbox
+                checked={condition.params?.exclude_same_device ?? true}
+                onCheckedChange={handleExcludeSameDeviceChange}
+              />
+              <span className="text-muted-foreground text-sm">Unique devices</span>
+            </label>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[240px]">
+            When checked, only compares sessions from different physical devices. Uncheck to include
+            all sessions regardless of device.
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {/* Remove Button */}

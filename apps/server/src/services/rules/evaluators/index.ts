@@ -162,11 +162,24 @@ const evaluateConcurrentStreams: ConditionEvaluator = (
   context: EvaluationContext,
   condition: Condition
 ): boolean => {
-  const { activeSessions, serverUser } = context;
+  const { session, activeSessions, serverUser } = context;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
 
-  // Count active sessions for this user
-  const userActiveSessions = activeSessions.filter((s) => s.serverUserId === serverUser.id);
-  const count = userActiveSessions.length;
+  // Count active sessions for this user (excluding current session by reference to avoid double-count)
+  let userActiveSessions = activeSessions.filter(
+    (s) => s.serverUserId === serverUser.id && s !== session
+  );
+
+  // When exclude_same_device is true, don't count sessions from the same device.
+  // A single physical device can only play one stream - duplicates are stale data.
+  if (excludeSameDevice) {
+    userActiveSessions = userActiveSessions.filter(
+      (s) => !(session.deviceId && s.deviceId && session.deviceId === s.deviceId)
+    );
+  }
+
+  // Add 1 for the current session
+  const count = userActiveSessions.length + 1;
 
   return compare(count, condition.operator, condition.value);
 };
@@ -176,11 +189,20 @@ const evaluateActiveSessionDistanceKm: ConditionEvaluator = (
   condition: Condition
 ): boolean => {
   const { session, activeSessions, serverUser } = context;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
 
-  // Get other active sessions for this user
-  const otherSessions = activeSessions.filter(
-    (s) => s.serverUserId === serverUser.id && s.id !== session.id
+  // Get other active sessions for this user (excluding current session by reference)
+  let otherSessions = activeSessions.filter(
+    (s) => s.serverUserId === serverUser.id && s !== session
   );
+
+  // When exclude_same_device is true, only consider sessions from different devices.
+  // Same device = same physical location, so distance comparison doesn't make sense.
+  if (excludeSameDevice) {
+    otherSessions = otherSessions.filter(
+      (s) => !(session.deviceId && s.deviceId && session.deviceId === s.deviceId)
+    );
+  }
 
   if (otherSessions.length === 0) {
     return compare(0, condition.operator, condition.value);
@@ -208,11 +230,20 @@ const evaluateTravelSpeedKmh: ConditionEvaluator = (
   condition: Condition
 ): boolean => {
   const { session, recentSessions, serverUser } = context;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
 
-  // Get the most recent previous session for this user
-  const previousSessions = recentSessions
-    .filter((s) => s.serverUserId === serverUser.id && s.id !== session.id)
+  // Get previous sessions for this user (excluding current session by reference)
+  let previousSessions = recentSessions
+    .filter((s) => s.serverUserId === serverUser.id && s !== session)
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+
+  // When exclude_same_device is true, only compare against sessions from different devices.
+  // VPN switches on the same device are not "impossible travel" - the device didn't move.
+  if (excludeSameDevice) {
+    previousSessions = previousSessions.filter(
+      (s) => !(session.deviceId && s.deviceId && session.deviceId === s.deviceId)
+    );
+  }
 
   if (previousSessions.length === 0) {
     return compare(0, condition.operator, condition.value);

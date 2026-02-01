@@ -496,6 +496,10 @@ export interface Condition {
   value: ConditionValue;
   params?: {
     window_hours?: number; // for velocity checks
+    // When true, exclude sessions from the same device when comparing across sessions.
+    // Useful for: concurrent_streams (don't double-count same device),
+    // travel_speed_kmh (VPN switch isn't travel), active_session_distance_km (same device = same location)
+    exclude_same_device?: boolean;
   };
 }
 

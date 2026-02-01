@@ -51,6 +51,9 @@ const DEFAULT_ACTIONS: RuleActions = {
 
 /**
  * Generate V2 template for Impossible Travel rule
+ *
+ * By default, excludes same-device comparisons since VPN switches on the
+ * same device aren't "impossible travel" - the physical device didn't move.
  */
 export function createImpossibleTravelTemplate(
   maxSpeedKmh: number = 500,
@@ -64,7 +67,12 @@ export function createImpossibleTravelTemplate(
     conditions: {
       groups: [
         createConditionGroup(
-          { field: 'travel_speed_kmh', operator: 'gt', value: maxSpeedKmh },
+          {
+            field: 'travel_speed_kmh',
+            operator: 'gt',
+            value: maxSpeedKmh,
+            params: { exclude_same_device: true },
+          },
           excludePrivateIps
         ),
       ],
@@ -75,6 +83,9 @@ export function createImpossibleTravelTemplate(
 
 /**
  * Generate V2 template for Simultaneous Locations rule
+ *
+ * By default, excludes same-device comparisons since the same physical device
+ * can only be in one location. Multiple sessions from one device are stale data.
  */
 export function createSimultaneousLocationsTemplate(
   minDistanceKm: number = 100,
@@ -88,7 +99,12 @@ export function createSimultaneousLocationsTemplate(
     conditions: {
       groups: [
         createConditionGroup(
-          { field: 'active_session_distance_km', operator: 'gte', value: minDistanceKm },
+          {
+            field: 'active_session_distance_km',
+            operator: 'gte',
+            value: minDistanceKm,
+            params: { exclude_same_device: true },
+          },
           excludePrivateIps
         ),
       ],
@@ -129,6 +145,9 @@ export function createDeviceVelocityTemplate(
 
 /**
  * Generate V2 template for Concurrent Streams rule
+ *
+ * By default, excludes same-device sessions since a single physical device
+ * can only play one stream. Duplicate sessions from one device are stale data.
  */
 export function createConcurrentStreamsTemplate(
   maxStreams: number = 3,
@@ -142,7 +161,12 @@ export function createConcurrentStreamsTemplate(
     conditions: {
       groups: [
         createConditionGroup(
-          { field: 'concurrent_streams', operator: 'gt', value: maxStreams },
+          {
+            field: 'concurrent_streams',
+            operator: 'gt',
+            value: maxStreams,
+            params: { exclude_same_device: true },
+          },
           excludePrivateIps
         ),
       ],
@@ -153,6 +177,10 @@ export function createConcurrentStreamsTemplate(
 
 /**
  * Generate V2 template for Geo Restriction rule
+ *
+ * Always excludes local network sessions to match V1 behavior.
+ * Local network IPs have geoCountry='Local Network' which would incorrectly
+ * trigger allowlist rules (since 'Local Network' is not in the allowed countries).
  */
 export function createGeoRestrictionTemplate(
   mode: 'blocklist' | 'allowlist' = 'blocklist',
@@ -173,7 +201,11 @@ export function createGeoRestrictionTemplate(
     conditions: {
       groups: [
         {
-          conditions: [{ field: 'country', operator, value: countries }],
+          conditions: [
+            { field: 'country', operator, value: countries },
+            // Always exclude local network - matches V1 behavior where local IPs are never blocked
+            { field: 'is_local_network', operator: 'eq', value: false },
+          ],
         },
       ],
     },
