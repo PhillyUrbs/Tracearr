@@ -12,6 +12,7 @@ import {
 import type { Action, ActionType } from '@tracearr/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import {
   Select,
   SelectContent,
@@ -146,14 +147,13 @@ function ConfigFieldInput({ field, value, onChange }: ConfigFieldInputProps) {
     return (
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-sm whitespace-nowrap">{field.label}:</span>
-        <Input
-          type="number"
+        <NumericInput
           className="w-20"
           min={field.min}
           max={field.max}
           step={field.step}
           value={(value as number) ?? field.min ?? 0}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(v) => onChange(v)}
         />
         {field.unit && <span className="text-muted-foreground text-sm">{field.unit}</span>}
       </div>

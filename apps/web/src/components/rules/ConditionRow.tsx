@@ -3,6 +3,7 @@ import type { Condition, ConditionField, Operator, RulesFilterOptions } from '@t
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -144,13 +145,12 @@ export function ConditionRow({
       {fieldDef.hasWindowHours && (
         <div className="flex items-center gap-1">
           <span className="text-muted-foreground text-sm whitespace-nowrap">in</span>
-          <Input
-            type="number"
+          <NumericInput
             className="w-16"
             min={1}
             max={168}
             value={condition.params?.window_hours ?? 24}
-            onChange={(e) => handleWindowHoursChange(Number(e.target.value) || 24)}
+            onChange={handleWindowHoursChange}
           />
           <span className="text-muted-foreground text-sm">hrs</span>
         </div>
@@ -265,13 +265,12 @@ function ValueInput({
   if (fieldDef.valueType === 'number') {
     return (
       <div className="flex items-center gap-1">
-        <Input
-          type="number"
+        <NumericInput
           min={fieldDef.min}
           max={fieldDef.max}
           step={fieldDef.step}
           value={value as number}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={onChange}
         />
         {fieldDef.unit && (
           <span className="text-muted-foreground text-sm whitespace-nowrap">{fieldDef.unit}</span>

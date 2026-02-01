@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -257,13 +258,12 @@ function RuleParamsForm({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="maxSpeedKmh">{t('rules.maxSpeed', { unit: speedUnit })}</Label>
-            <Input
+            <NumericInput
               id="maxSpeedKmh"
-              type="number"
+              min={0}
               value={displayValue}
-              onChange={(e) => {
+              onChange={(inputValue) => {
                 // Convert display value back to metric for storage
-                const inputValue = parseInt(e.target.value) || 0;
                 const metricValue = Math.round(toMetricDistance(inputValue, unitSystem));
                 onChange({ ...params, maxSpeedKmh: metricValue });
               }}
@@ -289,13 +289,12 @@ function RuleParamsForm({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="minDistanceKm">{t('rules.minDistance', { unit: distanceUnit })}</Label>
-            <Input
+            <NumericInput
               id="minDistanceKm"
-              type="number"
+              min={0}
               value={displayValue}
-              onChange={(e) => {
+              onChange={(inputValue) => {
                 // Convert display value back to metric for storage
-                const inputValue = parseInt(e.target.value) || 0;
                 const metricValue = Math.round(toMetricDistance(inputValue, unitSystem));
                 onChange({ ...params, minDistanceKm: metricValue });
               }}
@@ -317,23 +316,23 @@ function RuleParamsForm({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="maxIps">{t('rules.maxIps')}</Label>
-            <Input
+            <NumericInput
               id="maxIps"
-              type="number"
+              min={1}
               value={(params as { maxIps: number; windowHours: number }).maxIps}
-              onChange={(e) => {
-                onChange({ ...params, maxIps: parseInt(e.target.value) || 0 });
+              onChange={(value) => {
+                onChange({ ...params, maxIps: value });
               }}
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="windowHours">{t('rules.timeWindow')}</Label>
-            <Input
+            <NumericInput
               id="windowHours"
-              type="number"
+              min={1}
               value={(params as { maxIps: number; windowHours: number }).windowHours}
-              onChange={(e) => {
-                onChange({ ...params, windowHours: parseInt(e.target.value) || 0 });
+              onChange={(value) => {
+                onChange({ ...params, windowHours: value });
               }}
             />
           </div>
@@ -363,12 +362,12 @@ function RuleParamsForm({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="maxStreams">{t('rules.maxStreams')}</Label>
-            <Input
+            <NumericInput
               id="maxStreams"
-              type="number"
+              min={1}
               value={(params as { maxStreams: number }).maxStreams}
-              onChange={(e) => {
-                onChange({ ...params, maxStreams: parseInt(e.target.value) || 0 });
+              onChange={(value) => {
+                onChange({ ...params, maxStreams: value });
               }}
             />
             <p className="text-muted-foreground text-xs">{t('rules.maxStreamsDefault')}</p>
@@ -402,13 +401,12 @@ function RuleParamsForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="inactivityValue">{t('rules.inactivityPeriod')}</Label>
-              <Input
+              <NumericInput
                 id="inactivityValue"
-                type="number"
                 min={1}
                 value={inactivityParams.inactivityValue}
-                onChange={(e) => {
-                  onChange({ ...params, inactivityValue: parseInt(e.target.value) || 1 });
+                onChange={(value) => {
+                  onChange({ ...params, inactivityValue: value });
                 }}
               />
             </div>

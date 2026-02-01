@@ -3,6 +3,7 @@ import { Loader2, Check, AlertCircle, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Field, FieldLabel, FieldDescription, FieldError } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/ui/numeric-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -269,11 +270,10 @@ export function AutosaveNumberField({
     <Field data-invalid={hasError} className={className}>
       <FieldHeader id={id} label={label} status={status} />
       <div className="flex items-center gap-2">
-        <Input
+        <NumericInput
           id={id}
-          type="number"
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={onChange}
           min={min}
           max={max}
           step={step}
