@@ -21,21 +21,8 @@ import { useBandwidthDaily, useBandwidthTopUsers, useBandwidthSummary } from '@/
 import { useServer } from '@/hooks/useServer';
 import { useTimeRange } from '@/hooks/useTimeRange';
 import { getAvatarUrl } from '@/components/users/utils';
+import { formatBytes } from '@/lib/formatters';
 import type { DailyBandwidthRow } from '@tracearr/shared';
-
-// Format bytes for display
-function formatBytes(bytes: number): string {
-  const k = 1024;
-
-  if (!+bytes || bytes < k) {
-    return '0 KB';
-  }
-
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(i <= 3 ? 1 : 2))} ${sizes[i]}`;
-}
 
 interface BandwidthChartProps {
   data: DailyBandwidthRow[] | undefined;

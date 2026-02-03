@@ -43,6 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { formatDuration } from '@/lib/formatters';
 
 interface JobOption {
   name: string;
@@ -106,14 +107,6 @@ const CATEGORY_CONFIG: Record<JobCategory, { icon: typeof Database; label: strin
   backfill: { icon: History, label: 'Backfill' },
   cleanup: { icon: HardDrive, label: 'Cleanup' },
 };
-
-function formatDuration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
 
 export function JobsSettings() {
   const { t } = useTranslation(['notifications', 'pages', 'common']);
@@ -625,7 +618,7 @@ export function JobsSettings() {
                       </p>
                       {item.result && (
                         <p className="text-muted-foreground text-xs tabular-nums">
-                          {formatDuration(item.result.durationMs)}
+                          {formatDuration(item.result.durationMs, { style: 'compact' })}
                         </p>
                       )}
                     </div>

@@ -2,6 +2,7 @@ import { useState, Fragment } from 'react';
 import { ChevronRight, Copy } from 'lucide-react';
 import { formatMediaTech, type DuplicatesResponse } from '@tracearr/shared';
 import { cn } from '@/lib/utils';
+import { formatBytes } from '@/lib/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
@@ -14,16 +15,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { MatchTypeBadge, EmptyState } from '@/components/library';
-
-/**
- * Format bytes to human-readable string (GB or TB).
- */
-function formatBytes(bytes: number | null | undefined): string {
-  if (!bytes) return '0 GB';
-  const gb = bytes / 1024 ** 3;
-  if (gb >= 1024) return `${(gb / 1024).toFixed(1)} TB`;
-  return `${gb.toFixed(1)} GB`;
-}
 
 interface DuplicatesTableProps {
   data: DuplicatesResponse | undefined;

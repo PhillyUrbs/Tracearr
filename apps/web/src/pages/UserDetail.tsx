@@ -11,6 +11,7 @@ import { SeverityBadge } from '@/components/violations/SeverityBadge';
 import { ActiveSessionBadge } from '@/components/sessions/ActiveSessionBadge';
 import { getAvatarUrl } from '@/components/users/utils';
 import { getCountryName, getMediaDisplay } from '@/lib/utils';
+import { formatDuration } from '@/lib/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -38,21 +39,6 @@ import type {
 import { useUserFull, useUserSessions, useViolations, useUserTerminations } from '@/hooks/queries';
 import { useServer } from '@/hooks/useServer';
 import { useAuth } from '@/hooks/useAuth';
-
-/**
- * Format duration in human readable format
- */
-function formatDuration(ms: number | null): string {
-  if (!ms) return '—';
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
 
 // Union type for violations - aggregate returns ViolationSummary, paginated returns ViolationWithDetails
 type ViolationRow = ViolationSummary | ViolationWithDetails;
@@ -98,7 +84,9 @@ export function UserDetail() {
         accessorKey: 'durationMs',
         header: t('common:labels.duration'),
         cell: ({ row }) => (
-          <span className="text-sm">{formatDuration(row.original.durationMs)}</span>
+          <span className="text-sm">
+            {formatDuration(row.original.durationMs, { style: 'compact' })}
+          </span>
         ),
       },
       {

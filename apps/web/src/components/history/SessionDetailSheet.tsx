@@ -38,6 +38,7 @@ import {
   Clapperboard,
 } from 'lucide-react';
 import { cn, getCountryName, getMediaDisplay } from '@/lib/utils';
+import { formatDuration } from '@/lib/formatters';
 import { getAvatarUrl } from '@/components/users/utils';
 import { useTheme } from '@/components/theme-provider';
 import { StreamDetailsPanel } from './StreamDetailsPanel';
@@ -89,19 +90,6 @@ const TILE_URLS = {
   dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
 };
-
-// Format duration
-function formatDuration(ms: number | null): string {
-  if (!ms) return '—';
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
 
 // Format transcode reason codes into human-friendly labels
 function formatReason(reason: string): string {
@@ -358,18 +346,18 @@ export function SessionDetailSheet({ session, open, onOpenChange }: Props) {
               )}
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Watch time</span>
-                <span>{formatDuration(getWatchTime(session))}</span>
+                <span>{formatDuration(getWatchTime(session), { style: 'compact' })}</span>
               </div>
               {session.pausedDurationMs > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Paused</span>
-                  <span>{formatDuration(session.pausedDurationMs)}</span>
+                  <span>{formatDuration(session.pausedDurationMs, { style: 'compact' })}</span>
                 </div>
               )}
               {session.totalDurationMs && (
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Media length</span>
-                  <span>{formatDuration(session.totalDurationMs)}</span>
+                  <span>{formatDuration(session.totalDurationMs, { style: 'compact' })}</span>
                 </div>
               )}
             </div>

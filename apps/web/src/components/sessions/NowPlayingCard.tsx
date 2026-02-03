@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn, getCountryName, getMediaDisplay } from '@/lib/utils';
+import { formatDuration } from '@/lib/formatters';
 import { useEstimatedProgress } from '@/hooks/useEstimatedProgress';
 import { useAuth } from '@/hooks/useAuth';
 import { TerminateSessionDialog } from './TerminateSessionDialog';
@@ -41,20 +42,6 @@ function DeviceIcon({ session, className }: { session: ActiveSession; className?
     return <Tv className={className} />;
   }
   return <Monitor className={className} />;
-}
-
-// Format duration for display
-function formatDuration(ms: number | null): string {
-  if (!ms) return '--:--';
-  const seconds = Math.floor(ms / 1000);
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = seconds % 60;
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
 export function NowPlayingCard({ session, onClick }: NowPlayingCardProps) {

@@ -10,23 +10,7 @@ import { LibraryGrowthChart } from '@/components/charts';
 import { useLibraryStats, useLibraryGrowth, useLibraryStatus } from '@/hooks/queries';
 import { useServer } from '@/hooks/useServer';
 import { useTimeRange } from '@/hooks/useTimeRange';
-
-/**
- * Format bytes to human-readable size (TB/GB)
- * totalSizeBytes from API is a string representing BigInt
- */
-function formatBytes(bytesStr: string | null | undefined): string {
-  if (!bytesStr) return '0 GB';
-
-  // Parse as BigInt for large values, convert to GB
-  const bytes = BigInt(bytesStr);
-  const gb = Number(bytes / BigInt(1024 ** 3));
-
-  if (gb >= 1024) {
-    return `${(gb / 1024).toFixed(1)} TB`;
-  }
-  return `${gb.toFixed(1)} GB`;
-}
+import { formatBytes } from '@/lib/formatters';
 
 /**
  * Format date for last updated display

@@ -39,6 +39,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn, getCountryName, getMediaDisplay } from '@/lib/utils';
+import { formatDuration } from '@/lib/formatters';
 import { getAvatarUrl } from '@/components/users/utils';
 import type { SessionWithDetails, SessionState, MediaType, EngagementTier } from '@tracearr/shared';
 import type { ColumnVisibility } from './HistoryFilters';
@@ -189,19 +190,6 @@ function MediaTypeIcon({ type }: { type: MediaType }) {
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
-}
-
-// Format duration in human readable format
-function formatDuration(ms: number | null): string {
-  if (!ms) return '—';
-  const totalSeconds = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
 }
 
 // Calculate progress percentage (playback position)
@@ -406,17 +394,23 @@ export const HistoryTableRow = forwardRef<
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5">
                 <Clock className="text-muted-foreground h-3.5 w-3.5" />
-                <span className="text-sm">{formatDuration(session.durationMs)}</span>
+                <span className="text-sm">
+                  {formatDuration(session.durationMs, { style: 'compact' })}
+                </span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <div className="space-y-1 text-xs">
-                <div>Watch time: {formatDuration(session.durationMs)}</div>
+                <div>Watch time: {formatDuration(session.durationMs, { style: 'compact' })}</div>
                 {session.pausedDurationMs > 0 && (
-                  <div>Paused: {formatDuration(session.pausedDurationMs)}</div>
+                  <div>
+                    Paused: {formatDuration(session.pausedDurationMs, { style: 'compact' })}
+                  </div>
                 )}
                 {session.totalDurationMs && (
-                  <div>Media length: {formatDuration(session.totalDurationMs)}</div>
+                  <div>
+                    Media length: {formatDuration(session.totalDurationMs, { style: 'compact' })}
+                  </div>
                 )}
                 {session.segmentCount && session.segmentCount > 1 && (
                   <div>Segments: {session.segmentCount}</div>

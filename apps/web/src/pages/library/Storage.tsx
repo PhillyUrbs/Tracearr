@@ -23,27 +23,7 @@ import {
 } from '@/hooks/queries';
 import { useServer } from '@/hooks/useServer';
 import { useTimeRange } from '@/hooks/useTimeRange';
-
-const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'] as const;
-
-/**
- * Format bytes to human-readable size (B through PB)
- * Handles string (BigInt) or number values from API
- */
-function formatBytes(bytesStr: string | number | null | undefined, decimals = 1): string {
-  if (!bytesStr) return '0 B';
-
-  // Convert BigInt string to number - safe up to ~9 petabytes
-  const bytes = typeof bytesStr === 'string' ? Number(BigInt(bytesStr)) : Math.floor(bytesStr);
-
-  if (bytes === 0) return '0 B';
-
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  const value = bytes / Math.pow(k, i);
-
-  return `${value.toLocaleString(undefined, { maximumFractionDigits: decimals })} ${BYTE_UNITS[i]}`;
-}
+import { formatBytes } from '@/lib/formatters';
 
 export function LibraryStorage() {
   const { selectedServerId, servers } = useServer();
