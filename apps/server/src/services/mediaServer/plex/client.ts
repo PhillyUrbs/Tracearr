@@ -95,7 +95,6 @@ export class PlexClient implements IMediaServerClient, IMediaServerClientWithHis
         if (result.status === 'fulfilled' && result.value && ratingKey) {
           originalMediaMap!.set(ratingKey, result.value);
         }
-        // Silently skip failed fetches - parser will use session data as fallback
       });
     }
 

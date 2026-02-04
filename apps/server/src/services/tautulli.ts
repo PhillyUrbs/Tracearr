@@ -1521,13 +1521,14 @@ export function mapStreamDataToSession(
   // Return mapped fields (only include non-empty objects)
   return {
     // Scalar fields (uppercase codecs for consistency with other importers)
-    sourceVideoCodec: streamData.video_codec?.toUpperCase() ?? null,
+    // Truncate to varchar(50) limit
+    sourceVideoCodec: streamData.video_codec?.toUpperCase()?.substring(0, 50) ?? null,
     sourceVideoWidth: streamData.video_width ?? null,
     sourceVideoHeight: streamData.video_height ?? null,
-    sourceAudioCodec: streamData.audio_codec?.toUpperCase() ?? null,
+    sourceAudioCodec: streamData.audio_codec?.toUpperCase()?.substring(0, 50) ?? null,
     sourceAudioChannels: streamData.audio_channels ?? null,
-    streamVideoCodec: streamData.stream_video_codec?.toUpperCase() ?? null,
-    streamAudioCodec: streamData.stream_audio_codec?.toUpperCase() ?? null,
+    streamVideoCodec: streamData.stream_video_codec?.toUpperCase()?.substring(0, 50) ?? null,
+    streamAudioCodec: streamData.stream_audio_codec?.toUpperCase()?.substring(0, 50) ?? null,
     bitrate: streamData.bandwidth ?? streamData.stream_bitrate ?? streamData.bitrate ?? null,
     quality: streamData.quality_profile ?? null,
 

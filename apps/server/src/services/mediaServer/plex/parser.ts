@@ -703,7 +703,11 @@ export function parseSession(
   let videoHeight: number | undefined;
   let videoResolution: string | undefined;
 
-  if (isTranscode && originalMedia) {
+  // Check if originalMedia has valid dimensions (not just that it exists)
+  const hasValidOriginalMedia =
+    originalMedia && originalMedia.videoWidth && originalMedia.videoHeight;
+
+  if (isTranscode && hasValidOriginalMedia) {
     // Use original media for source, session data for stream output
     bitrate = sessionBitrate; // Current streaming bitrate (transcoded)
     videoWidth = originalMedia.videoWidth; // Source dimensions

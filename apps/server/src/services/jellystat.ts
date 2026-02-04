@@ -170,7 +170,7 @@ export function extractJellystatStreamDetails(
 
     // Source video
     if (videoStream) {
-      result.sourceVideoCodec = videoStream.Codec?.toUpperCase() ?? null;
+      result.sourceVideoCodec = videoStream.Codec?.toUpperCase()?.substring(0, 50) ?? null;
       result.sourceVideoWidth = videoStream.Width ?? null;
       result.sourceVideoHeight = videoStream.Height ?? null;
 
@@ -193,7 +193,7 @@ export function extractJellystatStreamDetails(
 
     // Source audio
     if (audioStream) {
-      result.sourceAudioCodec = audioStream.Codec?.toUpperCase() ?? null;
+      result.sourceAudioCodec = audioStream.Codec?.toUpperCase()?.substring(0, 50) ?? null;
       result.sourceAudioChannels = audioStream.Channels ?? null;
 
       // Build source audio details JSONB
@@ -225,10 +225,10 @@ export function extractJellystatStreamDetails(
   if (transcodingInfo) {
     // Stream output codecs (after transcode)
     if (transcodingInfo.VideoCodec) {
-      result.streamVideoCodec = transcodingInfo.VideoCodec.toUpperCase();
+      result.streamVideoCodec = transcodingInfo.VideoCodec.toUpperCase().substring(0, 50);
     }
     if (transcodingInfo.AudioCodec) {
-      result.streamAudioCodec = transcodingInfo.AudioCodec.toUpperCase();
+      result.streamAudioCodec = transcodingInfo.AudioCodec.toUpperCase().substring(0, 50);
     }
 
     // Build stream video details JSONB
