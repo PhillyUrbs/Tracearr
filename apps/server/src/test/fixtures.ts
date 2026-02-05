@@ -175,6 +175,8 @@ export function createMockActiveSession(overrides: Partial<ActiveSession> = {}):
       name: 'Test Server',
       type: 'plex' as ServerType,
     },
+    // Default to true for test sessions (most tests expect termination to work)
+    canTerminate: overrides.canTerminate ?? true,
     // Apply overrides last to allow stream detail overrides
     ...overrides,
   };

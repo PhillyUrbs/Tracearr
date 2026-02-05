@@ -329,6 +329,8 @@ export interface Session extends StreamDetailFields {
 export interface ActiveSession extends Session {
   user: Pick<ServerUser, 'id' | 'username' | 'thumbUrl'> & { identityName: string | null };
   server: Pick<Server, 'id' | 'name' | 'type'>;
+  /** Whether this session can be terminated (some clients like Plexamp don't support termination) */
+  canTerminate: boolean;
 }
 
 // Session with user/server details (from paginated API)

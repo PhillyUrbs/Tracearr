@@ -394,8 +394,9 @@ export function createCacheService(redis: Redis): CacheService {
     // Termination cooldown methods
     async setTerminationCooldown(serverId: string, sessionKey: string): Promise<void> {
       const cooldownKey = `termination:cooldown:${serverId}:${sessionKey}`;
-      // 60 second cooldown to prevent re-creating recently terminated sessions
-      await redis.setex(cooldownKey, 60, '1');
+      // 5 minute cooldown to prevent re-creating recently terminated sessions
+      // Plex can continue reporting terminated sessions as active for several minutes
+      await redis.setex(cooldownKey, 300, '1');
     },
 
     async hasTerminationCooldown(serverId: string, sessionKey: string): Promise<boolean> {

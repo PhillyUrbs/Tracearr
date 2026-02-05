@@ -49,8 +49,9 @@ export function NowPlayingCard({ session, onClick }: NowPlayingCardProps) {
   const { user } = useAuth();
   const [showTerminateDialog, setShowTerminateDialog] = useState(false);
 
-  // Only admin/owner can terminate sessions
-  const canTerminate = user?.role === 'admin' || user?.role === 'owner';
+  // Only admin/owner can terminate sessions, and session must support termination
+  // (some Plex clients like Plexamp don't provide the required Session.id)
+  const canTerminate = (user?.role === 'admin' || user?.role === 'owner') && session.canTerminate;
 
   // Use estimated progress for smooth updates between SSE/poll events
   const { estimatedProgressMs, progressPercent } = useEstimatedProgress(session);

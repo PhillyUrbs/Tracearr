@@ -94,6 +94,8 @@ export interface BuildActiveSessionInput {
   /** Processed session data from media server (extends StreamDetailFields for DRY) */
   processed: StreamDetailFields & {
     sessionKey: string;
+    /** Plex Session.id - required for termination (some clients like Plexamp may not have this) */
+    plexSessionId?: string;
     state: 'playing' | 'paused';
     mediaType: 'movie' | 'episode' | 'track' | 'live' | 'photo' | 'unknown';
     mediaTitle: string;
@@ -246,6 +248,9 @@ export function buildActiveSession(input: BuildActiveSessionInput): ActiveSessio
     // Relationships
     user,
     server: { id: server.id, name: server.name, type: server.type },
+
+    // Termination capability - Plex requires Session.id, some clients (like Plexamp) don't provide it
+    canTerminate: server.type !== 'plex' || !!processed.plexSessionId,
   };
 }
 
