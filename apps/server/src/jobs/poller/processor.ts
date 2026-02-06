@@ -42,6 +42,7 @@ import {
   buildActiveSession,
   processPollResults,
   handleMediaChangeAtomic,
+  reEvaluateRulesOnTranscodeChange,
 } from './sessionLifecycle.js';
 import { enqueueNotification } from '../notificationQueue.js';
 
@@ -655,6 +656,33 @@ async function processServerSessions(
         if (transcodeStateChanged) {
           const streamDetails = pickStreamDetailFields(processed);
           Object.assign(updatePayload, streamDetails);
+
+          // Re-evaluate V2 rules that have transcode-related conditions.
+          // At session creation, transcode state might not be known yet (especially Plex SSE),
+          // so rules like "block 4K transcoding" need a second chance when transcode starts.
+          if (activeRulesV2.length > 0) {
+            try {
+              const recentSessions = recentSessionsMap.get(serverUserId) ?? [];
+              const violationResults = await reEvaluateRulesOnTranscodeChange({
+                existingSession,
+                processed,
+                server: { id: server.id, name: server.name, type: server.type },
+                serverUser: userDetail,
+                activeRulesV2,
+                activeSessions,
+                recentSessions,
+              });
+
+              if (violationResults.length > 0 && pubSubService) {
+                await broadcastViolations(violationResults, existingSession.id, pubSubService);
+              }
+            } catch (error) {
+              console.error(
+                `[Poller] Error re-evaluating rules on transcode change for session ${existingSession.id}:`,
+                error
+              );
+            }
+          }
         }
 
         const pauseResult = calculatePauseAccumulation(
