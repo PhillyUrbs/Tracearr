@@ -62,8 +62,12 @@
     "unsavedChanges": "Ungespeicherte Änderungen gehen verloren. Fortfahren?"
   },
   "count": {
+    "error_one": "{{count}} Fehler",
+    "error_other": "{{count}} Fehler",
     "item_one": "{{count}} Eintrag",
     "item_other": "{{count}} Einträge",
+    "library_one": "{{count}} Bibliothek",
+    "library_other": "{{count}} Bibliotheken",
     "result_one": "{{count}} Ergebnis",
     "result_other": "{{count}} Ergebnisse",
     "rule_one": "{{count}} Regel",
@@ -78,19 +82,12 @@
     "stream_other": "{{count}} Streams",
     "user_one": "{{count}} Benutzer",
     "user_other": "{{count}} Benutzer",
-    "violation_one": "{{count}} Verstoß",
-    "violation_other": "{{count}} Verstöße",
     "usersAdded_one": "{{count}} Benutzer hinzugefügt",
     "usersAdded_other": "{{count}} Benutzer hinzugefügt",
     "usersUpdated_one": "{{count}} Benutzer aktualisiert",
     "usersUpdated_other": "{{count}} Benutzer aktualisiert",
-    "library_one": "{{count}} Bibliothek",
-    "library_other": "{{count}} Bibliotheken",
-    "error_one": "{{count}} Fehler",
-    "error_other": "{{count}} Fehler"
-  },
-  "messages": {
-    "noChangesDetected": "Keine Änderungen erkannt"
+    "violation_one": "{{count}} Verstoß",
+    "violation_other": "{{count}} Verstöße"
   },
   "duration": {
     "day_one": "{{count}} Tag",
@@ -104,11 +101,11 @@
   },
   "empty": {
     "noData": "Keine Daten verfügbar",
-    "noItems": "Keine Einträge",
-    "noResults": "Keine Ergebnisse gefunden",
     "noDeviceData": "Keine Gerätedaten verfügbar",
-    "noLocationData": "Keine Standortdaten verfügbar",
+    "noItems": "Keine Einträge",
     "noJobHistory": "Noch keine Aufgabenhistorie",
+    "noLocationData": "Keine Standortdaten verfügbar",
+    "noResults": "Keine Ergebnisse gefunden",
     "noSessionsFound": "Keine Sitzungen gefunden"
   },
   "errors": {
@@ -138,6 +135,7 @@
     "bandwidth": "Bandbreite",
     "content": "Inhalt",
     "date": "Datum",
+    "days": "days",
     "device": "Gerät",
     "disabled": "Deaktiviert",
     "duration": "Dauer",
@@ -178,6 +176,9 @@
     "photo": "Photo",
     "track": "Track"
   },
+  "messages": {
+    "noChangesDetected": "Keine Änderungen erkannt"
+  },
   "or": "or",
   "periods": {
     "byDay": "Nach Tag",
@@ -185,6 +186,14 @@
     "last30Days": "Letzten 30 Tage",
     "last7Days": "Letzten 7 Tage",
     "lastYear": "Letzte Jahr"
+  },
+  "playback": {
+    "directPlay": "Direct Play",
+    "directStream": "Direct Stream",
+    "paused": "Pausiert",
+    "playing": "Läuft",
+    "stopped": "Gestoppt",
+    "transcode": "Transcode"
   },
   "relativeTime": {
     "day_one": "vor {{count}} Tag",
@@ -220,6 +229,7 @@
   },
   "states": {
     "acknowledged": "Bestätigt",
+    "acknowledging": "Acknowledging...",
     "active": "Aktiv",
     "connected": "Verbunden",
     "connecting": "Verbinden...",
@@ -237,14 +247,6 @@
     "pending": "Ausstehend",
     "saving": "Speichern...",
     "success": "Erfolgreich"
-  },
-  "playback": {
-    "playing": "Läuft",
-    "paused": "Pausiert",
-    "stopped": "Gestoppt",
-    "directPlay": "Direct Play",
-    "directStream": "Direct Stream",
-    "transcode": "Transcode"
   },
   "table": {
     "selectAllOnPage": "Seite komplett auswählen",

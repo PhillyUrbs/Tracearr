@@ -62,8 +62,12 @@
     "unsavedChanges": "Tem alterações não guardadas. Tem a certeza de que quer sair?"
   },
   "count": {
+    "error_one": "{{count}} erro",
+    "error_other": "{{count}} erros",
     "item_one": "{{count}} item",
     "item_other": "{{count}} itens",
+    "library_one": "{{count}} biblioteca",
+    "library_other": "{{count}} bibliotecas",
     "result_one": "{{count}} resultado",
     "result_other": "{{count}} resultados",
     "rule_one": "{{count}} regra",
@@ -78,19 +82,12 @@
     "stream_other": "{{count}} transmissões",
     "user_one": "{{count}} utilizador",
     "user_other": "{{count}} utilizadores",
-    "violation_one": "{{count}} violação",
-    "violation_other": "{{count}} violações",
     "usersAdded_one": "{{count}} utilizador adicionado",
     "usersAdded_other": "{{count}} utilizadores adicionados",
     "usersUpdated_one": "{{count}} utilizador atualizado",
     "usersUpdated_other": "{{count}} utilizadores atualizados",
-    "library_one": "{{count}} biblioteca",
-    "library_other": "{{count}} bibliotecas",
-    "error_one": "{{count}} erro",
-    "error_other": "{{count}} erros"
-  },
-  "messages": {
-    "noChangesDetected": "Nenhuma alteração detetada"
+    "violation_one": "{{count}} violação",
+    "violation_other": "{{count}} violações"
   },
   "duration": {
     "day_one": "{{count}} dia",
@@ -104,11 +101,11 @@
   },
   "empty": {
     "noData": "Nenhum dado disponível",
-    "noItems": "Nenhum item",
-    "noResults": "Nenhum resultado encontrado",
     "noDeviceData": "Nenhum dado de dispositivo disponível",
-    "noLocationData": "Nenhum dado de localização disponível",
+    "noItems": "Nenhum item",
     "noJobHistory": "Ainda sem histórico de tarefas",
+    "noLocationData": "Nenhum dado de localização disponível",
+    "noResults": "Nenhum resultado encontrado",
     "noSessionsFound": "Nenhuma sessão encontrada"
   },
   "errors": {
@@ -138,6 +135,7 @@
     "bandwidth": "Largura de banda",
     "content": "Conteúdo",
     "date": "Data",
+    "days": "days",
     "device": "Dispositivo",
     "disabled": "Desativado",
     "duration": "Duração",
@@ -178,6 +176,9 @@
     "photo": "Photo",
     "track": "Track"
   },
+  "messages": {
+    "noChangesDetected": "Nenhuma alteração detetada"
+  },
   "or": "or",
   "periods": {
     "byDay": "By Day",
@@ -185,6 +186,14 @@
     "last30Days": "Last 30 Days",
     "last7Days": "Last 7 Days",
     "lastYear": "Last Year"
+  },
+  "playback": {
+    "directPlay": "Reprodução direta",
+    "directStream": "Transmissão direta",
+    "paused": "Pausado",
+    "playing": "A reproduzir",
+    "stopped": "Parado",
+    "transcode": "Transcodificação"
   },
   "relativeTime": {
     "day_one": "há {{count}} dia",
@@ -220,6 +229,7 @@
   },
   "states": {
     "acknowledged": "Reconhecido",
+    "acknowledging": "Acknowledging...",
     "active": "Ativo",
     "connected": "Ligado",
     "connecting": "A ligar...",
@@ -237,14 +247,6 @@
     "pending": "Pendente",
     "saving": "A guardar...",
     "success": "Sucesso"
-  },
-  "playback": {
-    "playing": "A reproduzir",
-    "paused": "Pausado",
-    "stopped": "Parado",
-    "directPlay": "Reprodução direta",
-    "directStream": "Transmissão direta",
-    "transcode": "Transcodificação"
   },
   "table": {
     "selectAllOnPage": "Select all on page",
