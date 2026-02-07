@@ -15,9 +15,9 @@
  */
 
 import type { FastifyPluginAsync } from 'fastify';
-import { eq, desc, sql, and, gte, lte, isNull, isNotNull } from 'drizzle-orm';
+import { eq, desc, sql, and, gte, isNull, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { formatBitrate, booleanStringSchema } from '@tracearr/shared';
+import { formatBitrate, booleanStringSchema, isValidTimezone } from '@tracearr/shared';
 import { db } from '../db/client.js';
 import { users, serverUsers, servers, sessions, violations, rules } from '../db/schema.js';
 import { getCacheService } from '../services/cache.js';
@@ -29,6 +29,54 @@ const paginationSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(100).default(25),
 });
+
+// Timezone schema - IANA timezone identifier, defaults to UTC
+const timezoneSchema = z
+  .string()
+  .min(1)
+  .max(100)
+  .refine(isValidTimezone, { message: 'Invalid IANA timezone identifier' })
+  .default('UTC');
+
+/**
+ * Convert a date to start of day in the specified timezone, returned as UTC.
+ * e.g., 2026-02-07 in America/New_York → 2026-02-07T05:00:00.000Z
+ */
+function toStartOfDayUTC(date: Date, timezone: string): Date {
+  // Format the date as YYYY-MM-DD in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const dateStr = formatter.format(date); // e.g., "2026-02-07"
+  // Parse as midnight in the target timezone and convert to UTC
+  const parts = dateStr.split('-');
+  const year = parseInt(parts[0] ?? '0', 10);
+  const month = parseInt(parts[1] ?? '0', 10) - 1;
+  const day = parseInt(parts[2] ?? '0', 10);
+
+  // Create a date string that will be parsed as the target timezone
+  const tzDate = new Date(
+    `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T00:00:00`
+  );
+  // Get the offset for this timezone at this date
+  const utcDate = new Date(tzDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+  const tzOffsetDate = new Date(tzDate.toLocaleString('en-US', { timeZone: timezone }));
+  const offsetMs = utcDate.getTime() - tzOffsetDate.getTime();
+
+  return new Date(tzDate.getTime() + offsetMs);
+}
+
+/**
+ * Convert a date to end of day (23:59:59.999) in the specified timezone, returned as UTC.
+ */
+function toEndOfDayUTC(date: Date, timezone: string): Date {
+  const startOfDay = toStartOfDayUTC(date, timezone);
+  // Add 23:59:59.999 to get end of day
+  return new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000 - 1);
+}
 
 // Common filter schema
 const serverFilterSchema = z.object({
@@ -507,6 +555,10 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
 
   /**
    * GET /history - Session history with filtering
+   *
+   * Sessions are grouped by reference_id to show unique "plays" rather than
+   * individual session records. Multiple pause/resume cycles for the same content
+   * are aggregated into a single row with combined duration (matches Web UI behavior).
    */
   app.get('/history', { preHandler: [app.authenticatePublicApi] }, async (request, reply) => {
     const querySchema = paginationSchema.extend({
@@ -515,6 +567,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       mediaType: z.enum(['movie', 'episode', 'track', 'live', 'photo', 'unknown']).optional(),
       startDate: z.coerce.date().optional(),
       endDate: z.coerce.date().optional(),
+      timezone: timezoneSchema,
     });
 
     const query = querySchema.safeParse(request.query);
@@ -522,7 +575,7 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       return reply.badRequest('Invalid query parameters');
     }
 
-    const { page, pageSize, serverId, state, mediaType, startDate, endDate } = query.data;
+    const { page, pageSize, serverId, state, mediaType, startDate, endDate, timezone } = query.data;
     const offset = (page - 1) * pageSize;
 
     // Validate date range
@@ -530,85 +583,165 @@ export const publicRoutes: FastifyPluginAsync = async (app) => {
       return reply.badRequest('startDate must be before or equal to endDate');
     }
 
-    // Build where conditions
-    const conditions: ReturnType<typeof eq>[] = [];
-    if (serverId) conditions.push(eq(sessions.serverId, serverId));
-    if (state) conditions.push(eq(sessions.state, state));
-    if (mediaType) conditions.push(eq(sessions.mediaType, mediaType));
-    if (startDate) conditions.push(gte(sessions.startedAt, startDate));
-    if (endDate) conditions.push(lte(sessions.startedAt, endDate));
+    // Build WHERE conditions for raw SQL CTE query
+    // Dates are converted to UTC based on the provided timezone
+    const conditions: ReturnType<typeof sql>[] = [];
+    if (serverId) conditions.push(sql`s.server_id = ${serverId}`);
+    if (state) conditions.push(sql`s.state = ${state}`);
+    if (mediaType) conditions.push(sql`s.media_type = ${mediaType}`);
+    if (startDate) {
+      const startUTC = toStartOfDayUTC(startDate, timezone);
+      conditions.push(sql`s.started_at >= ${startUTC}`);
+    }
+    if (endDate) {
+      const endUTC = toEndOfDayUTC(endDate, timezone);
+      conditions.push(sql`s.started_at <= ${endUTC}`);
+    }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause =
+      conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
 
-    // Get total count
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(sessions)
-      .where(whereClause);
+    // Get total count of unique plays (grouped by reference_id)
+    const countResult = await db.execute(sql`
+      SELECT COUNT(DISTINCT COALESCE(s.reference_id, s.id))::int as count
+      FROM sessions s
+      ${whereClause}
+    `);
+    const total = (countResult.rows[0] as { count: number })?.count ?? 0;
 
-    // Get sessions with server and user info joined directly (avoiding N+1)
-    const sessionRows = await db
-      .select({
-        id: sessions.id,
-        serverId: sessions.serverId,
-        serverName: servers.name,
-        state: sessions.state,
-        mediaType: sessions.mediaType,
-        mediaTitle: sessions.mediaTitle,
-        grandparentTitle: sessions.grandparentTitle,
-        seasonNumber: sessions.seasonNumber,
-        episodeNumber: sessions.episodeNumber,
-        year: sessions.year,
-        thumbPath: sessions.thumbPath,
-        durationMs: sessions.durationMs,
-        progressMs: sessions.progressMs,
-        startedAt: sessions.startedAt,
-        stoppedAt: sessions.stoppedAt,
-        device: sessions.device,
-        playerName: sessions.playerName,
-        // User info
-        userId: serverUsers.userId,
-        serverUsername: serverUsers.username,
-        userThumbUrl: serverUsers.thumbUrl,
-        userName: users.name,
-        userUsername: users.username,
-      })
-      .from(sessions)
-      .innerJoin(serverUsers, eq(sessions.serverUserId, serverUsers.id))
-      .innerJoin(servers, eq(sessions.serverId, servers.id))
-      .innerJoin(users, eq(serverUsers.userId, users.id))
-      .where(whereClause)
-      .orderBy(desc(sessions.startedAt))
-      .limit(pageSize)
-      .offset(offset);
+    // Query sessions grouped by reference_id (or id if no reference)
+    // This matches the behavior of the internal /sessions/history endpoint
+    const result = await db.execute(sql`
+      WITH grouped_sessions AS (
+        SELECT
+          COALESCE(s.reference_id, s.id) as play_id,
+          MIN(s.started_at) as started_at,
+          MAX(s.stopped_at) as stopped_at,
+          SUM(COALESCE(s.duration_ms, 0)) as duration_ms,
+          MAX(s.progress_ms) as progress_ms,
+          MAX(s.total_duration_ms) as total_duration_ms,
+          COUNT(*) as segment_count,
+          BOOL_OR(s.watched) as watched,
+          (array_agg(s.id ORDER BY s.started_at))[1] as first_session_id,
+          (array_agg(s.state ORDER BY s.started_at DESC))[1] as state
+        FROM sessions s
+        ${whereClause}
+        GROUP BY COALESCE(s.reference_id, s.id)
+        ORDER BY MIN(s.started_at) DESC
+        LIMIT ${pageSize} OFFSET ${offset}
+      )
+      SELECT
+        gs.play_id as id,
+        gs.started_at,
+        gs.stopped_at,
+        gs.duration_ms,
+        gs.progress_ms,
+        gs.total_duration_ms,
+        gs.segment_count,
+        gs.watched,
+        gs.state,
+        s.server_id,
+        sv.name as server_name,
+        s.media_type,
+        s.media_title,
+        s.grandparent_title,
+        s.season_number,
+        s.episode_number,
+        s.year,
+        s.thumb_path,
+        s.device,
+        s.player_name,
+        s.product,
+        s.platform,
+        s.is_transcode,
+        s.video_decision,
+        s.audio_decision,
+        s.bitrate,
+        su.user_id,
+        su.username as server_username,
+        su.thumb_url as user_thumb_url,
+        u.name as user_name,
+        u.username as user_username
+      FROM grouped_sessions gs
+      JOIN sessions s ON s.id = gs.first_session_id
+      JOIN server_users su ON su.id = s.server_user_id
+      JOIN servers sv ON sv.id = s.server_id
+      LEFT JOIN users u ON u.id = su.user_id
+      ORDER BY gs.started_at DESC
+    `);
 
-    const sessionData = sessionRows.map((row) => ({
+    // Type the result and transform
+    const sessionData = (
+      result.rows as {
+        id: string;
+        started_at: Date;
+        stopped_at: Date | null;
+        duration_ms: string | null;
+        progress_ms: number | null;
+        total_duration_ms: number | null;
+        segment_count: string;
+        watched: boolean;
+        state: string;
+        server_id: string;
+        server_name: string;
+        media_type: string;
+        media_title: string;
+        grandparent_title: string | null;
+        season_number: number | null;
+        episode_number: number | null;
+        year: number | null;
+        thumb_path: string | null;
+        device: string | null;
+        player_name: string | null;
+        product: string | null;
+        platform: string | null;
+        is_transcode: boolean | null;
+        video_decision: string | null;
+        audio_decision: string | null;
+        bitrate: number | null;
+        user_id: string;
+        server_username: string;
+        user_thumb_url: string | null;
+        user_name: string | null;
+        user_username: string | null;
+      }[]
+    ).map((row) => ({
       id: row.id,
-      serverId: row.serverId,
-      serverName: row.serverName,
+      serverId: row.server_id,
+      serverName: row.server_name,
       state: row.state,
-      mediaType: row.mediaType,
-      mediaTitle: row.mediaTitle,
-      showTitle: row.grandparentTitle,
-      seasonNumber: row.seasonNumber,
-      episodeNumber: row.episodeNumber,
+      mediaType: row.media_type,
+      mediaTitle: row.media_title,
+      showTitle: row.grandparent_title,
+      seasonNumber: row.season_number,
+      episodeNumber: row.episode_number,
       year: row.year,
-      thumbPath: row.thumbPath,
-      posterUrl: buildPosterUrl(row.serverId, row.thumbPath),
-      durationMs: row.durationMs,
-      progressMs: row.progressMs,
-      startedAt: row.startedAt.toISOString(),
-      stoppedAt: row.stoppedAt?.toISOString() ?? null,
+      thumbPath: row.thumb_path,
+      posterUrl: buildPosterUrl(row.server_id, row.thumb_path),
+      durationMs: row.duration_ms ? Number(row.duration_ms) : null,
+      progressMs: row.progress_ms,
+      totalDurationMs: row.total_duration_ms,
+      startedAt: row.started_at ? new Date(row.started_at).toISOString() : null,
+      stoppedAt: row.stopped_at ? new Date(row.stopped_at).toISOString() : null,
+      watched: row.watched,
+      segmentCount: Number(row.segment_count),
       device: row.device,
-      player: row.playerName,
+      player: row.player_name,
+      product: row.product,
+      platform: row.platform,
+      // Transcode info (matches /streams endpoint)
+      isTranscode: row.is_transcode,
+      videoDecision: row.video_decision,
+      audioDecision: row.audio_decision,
+      bitrate: row.bitrate,
       user: {
-        id: row.userId,
-        username: row.userName ?? row.serverUsername ?? row.userUsername,
-        thumbUrl: row.userThumbUrl,
-        avatarUrl: buildAvatarUrl(row.serverId, row.userThumbUrl),
+        id: row.user_id,
+        username: row.user_name ?? row.server_username ?? row.user_username,
+        thumbUrl: row.user_thumb_url,
+        avatarUrl: buildAvatarUrl(row.server_id, row.user_thumb_url),
       },
     }));
 
-    return paginatedResponse(sessionData, countResult?.count ?? 0, page, pageSize);
+    return paginatedResponse(sessionData, total, page, pageSize);
   });
 };

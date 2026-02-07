@@ -458,11 +458,22 @@ const HistoryQuery = z.object({
   startDate: z.coerce
     .date()
     .optional()
-    .openapi({ description: 'Filter sessions after this date (ISO 8601)' }),
+    .openapi({
+      description:
+        'Filter sessions starting on or after this date. Interpreted as start of day in the specified timezone.',
+    }),
   endDate: z.coerce
     .date()
     .optional()
-    .openapi({ description: 'Filter sessions before this date (ISO 8601)' }),
+    .openapi({
+      description:
+        'Filter sessions starting on or before this date. Interpreted as end of day in the specified timezone.',
+    }),
+  timezone: z.string().default('UTC').openapi({
+    description:
+      'IANA timezone identifier for date interpretation (e.g., America/New_York, Europe/London). Defaults to UTC.',
+    example: 'America/New_York',
+  }),
 });
 
 const SessionHistory = z
@@ -485,12 +496,49 @@ const SessionHistory = z
       .nullable()
       .openapi({ description: 'Media thumbnail path', example: '/library/metadata/12345/thumb' }),
     posterUrl: z.string().nullable().openapi({ description: 'Proxied poster URL (relative)' }),
-    durationMs: z.number().int().nullable().openapi({ description: 'Watch duration in ms' }),
+    durationMs: z
+      .number()
+      .int()
+      .nullable()
+      .openapi({ description: 'Total watch duration in ms (aggregated across segments)' }),
     progressMs: z.number().int().nullable().openapi({ description: 'Playback position in ms' }),
+    totalDurationMs: z
+      .number()
+      .int()
+      .nullable()
+      .openapi({ description: 'Total media length in ms' }),
     startedAt: z.iso.datetime(),
     stoppedAt: z.iso.datetime().nullable(),
+    watched: z.boolean().openapi({ description: 'True if user watched 85%+ of content' }),
+    segmentCount: z
+      .number()
+      .int()
+      .openapi({ description: 'Number of pause/resume segments in this play', example: 1 }),
     device: z.string().nullable(),
     player: z.string().nullable(),
+    product: z
+      .string()
+      .nullable()
+      .openapi({ description: 'Client product name', example: 'Plex for iOS' }),
+    platform: z.string().nullable().openapi({ description: 'Platform/OS', example: 'iOS' }),
+    // Transcode info
+    isTranscode: z
+      .boolean()
+      .nullable()
+      .openapi({ description: 'Whether stream was transcoded', example: false }),
+    videoDecision: z
+      .string()
+      .nullable()
+      .openapi({ description: 'Video transcode decision', example: 'directplay' }),
+    audioDecision: z
+      .string()
+      .nullable()
+      .openapi({ description: 'Audio transcode decision', example: 'transcode' }),
+    bitrate: z
+      .number()
+      .int()
+      .nullable()
+      .openapi({ description: 'Stream bitrate in kbps', example: 20000 }),
     user: z.object({
       id: z.uuid(),
       username: z.string(),
@@ -515,8 +563,22 @@ registry.registerPath({
   path: '/api/v1/public/history',
   tags: ['Public API'],
   summary: 'Session history with filtering',
-  description:
-    'Returns paginated session history. Filter by server, state, media type, or date range.',
+  description: `Returns paginated session history grouped by unique "plays".
+
+**Session Grouping:**
+Multiple pause/resume cycles for the same content are aggregated into a single entry with:
+- Combined \`durationMs\` (total watch time across segments)
+- First segment's \`startedAt\` time
+- Last segment's \`stoppedAt\` time
+- \`segmentCount\` indicating how many pause/resume cycles occurred
+
+This matches the behavior shown in the Tracearr Web UI history page.
+
+**Timezone Support:**
+Use the \`timezone\` parameter (IANA format like \`America/New_York\`) to control how \`startDate\` and \`endDate\` are interpreted. Dates are converted to start/end of day in the specified timezone. Defaults to UTC.
+
+**Filtering:**
+Filter by server, state, media type, or date range.`,
   security: [{ bearerAuth: [] }],
   request: { query: HistoryQuery },
   responses: {
