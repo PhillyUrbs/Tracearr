@@ -1421,8 +1421,7 @@ async function ensureEngagementViews(): Promise<void> {
         WHEN MAX(content_duration_ms) > 0 THEN
           CASE
             WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 2.0 THEN 'rewatched'
-            WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 1.0 THEN 'finished'
-            WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.8 THEN 'completed'
+            WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.85 THEN 'watched'
             WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.5 THEN 'engaged'
             WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.2 THEN 'sampled'
             ELSE 'abandoned'
@@ -1515,9 +1514,9 @@ async function ensureEngagementViews(): Promise<void> {
       COALESCE(ist.total_viewing_days, 1) AS total_viewing_days,
       COALESCE(ist.max_episodes_in_one_day, 1) AS max_episodes_in_one_day,
       COALESCE(ist.avg_episodes_per_viewing_day, 1.0) AS avg_episodes_per_viewing_day,
-      COUNT(*) FILTER (WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched')) AS completed_episodes,
+      COUNT(*) FILTER (WHERE ces.engagement_tier IN ('watched', 'rewatched')) AS completed_episodes,
       COUNT(*) FILTER (WHERE ces.engagement_tier = 'abandoned') AS abandoned_episodes,
-      ROUND(100.0 * COUNT(*) FILTER (WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched'))
+      ROUND(100.0 * COUNT(*) FILTER (WHERE ces.engagement_tier IN ('watched', 'rewatched'))
             / NULLIF(COUNT(*), 0), 1) AS episode_completion_rate
     FROM content_engagement_summary ces
     LEFT JOIN intensity_stats ist ON ces.server_user_id = ist.server_user_id AND ces.show_title = ist.show_title
@@ -1543,11 +1542,11 @@ async function ensureEngagementViews(): Promise<void> {
       COUNT(DISTINCT server_user_id) AS unique_viewers,
       SUM(valid_sessions) AS total_valid_sessions,
       SUM(total_sessions) AS total_all_sessions,
-      COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched')) AS completions,
+      COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched')) AS completions,
       COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') AS rewatches,
       COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') AS abandonments,
       COUNT(*) FILTER (WHERE engagement_tier = 'sampled') AS samples,
-      ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched'))
+      ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched'))
             / NULLIF(COUNT(*), 0), 1) AS completion_rate,
       ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier = 'abandoned')
             / NULLIF(COUNT(*), 0), 1) AS abandonment_rate
@@ -1614,14 +1613,14 @@ async function ensureEngagementViews(): Promise<void> {
       COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') AS abandoned_count,
       COUNT(*) FILTER (WHERE engagement_tier = 'sampled') AS sampled_count,
       COUNT(*) FILTER (WHERE engagement_tier = 'engaged') AS engaged_count,
-      COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished')) AS completed_count,
+      COUNT(*) FILTER (WHERE engagement_tier = 'watched') AS watched_count,
       COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') AS rewatched_count,
-      ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched'))
+      ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched'))
             / NULLIF(COUNT(*), 0), 1) AS completion_rate,
       CASE
         WHEN COUNT(*) = 0 THEN 'inactive'
         WHEN COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') > COUNT(*) * 0.2 THEN 'rewatcher'
-        WHEN COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched')) > COUNT(*) * 0.7 THEN 'completionist'
+        WHEN COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched')) > COUNT(*) * 0.7 THEN 'completionist'
         WHEN COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') > COUNT(*) * 0.5 THEN 'sampler'
         ELSE 'casual'
       END AS behavior_type,

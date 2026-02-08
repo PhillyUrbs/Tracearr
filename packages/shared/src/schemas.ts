@@ -804,8 +804,7 @@ export const engagementTierSchema = z.enum([
   'abandoned',
   'sampled',
   'engaged',
-  'completed',
-  'finished',
+  'watched',
   'rewatched',
   'unknown',
 ]);

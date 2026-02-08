@@ -316,7 +316,7 @@ async function executeItemLevel(
         MAX(ces.episode_number) AS episode_number,
         MAX(ces.last_watched_at) AS last_watched_at,
         -- Derive status from engagement tier (any user completing = completed for library)
-        BOOL_OR(ces.engagement_tier IN ('completed', 'finished', 'rewatched')) AS has_completion
+        BOOL_OR(ces.engagement_tier IN ('watched', 'rewatched')) AS has_completion
       FROM library_items li
       JOIN servers s ON li.server_id = s.id
       LEFT JOIN content_engagement_summary ces
@@ -398,7 +398,7 @@ async function executeItemLevel(
         li.id,
         COALESCE(SUM(ces.cumulative_watched_ms), 0) AS watched_ms,
         COALESCE(MAX(ces.content_duration_ms), 0) AS runtime_ms,
-        BOOL_OR(ces.engagement_tier IN ('completed', 'finished', 'rewatched')) AS has_completion
+        BOOL_OR(ces.engagement_tier IN ('watched', 'rewatched')) AS has_completion
       FROM library_items li
       LEFT JOIN content_engagement_summary ces
         ON ces.rating_key = li.rating_key
@@ -492,7 +492,7 @@ async function executeSeasonLevel(
         ces.season_number,
         COUNT(DISTINCT li.id) AS total_episodes,
         COUNT(DISTINCT li.id) FILTER (
-          WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched')
+          WHERE ces.engagement_tier IN ('watched', 'rewatched')
         ) AS completed_episodes,
         COUNT(DISTINCT li.id) FILTER (
           WHERE ces.engagement_tier IN ('engaged', 'sampled')
@@ -567,7 +567,7 @@ async function executeSeasonLevel(
         ces.season_number,
         COUNT(DISTINCT li.id) AS total_episodes,
         COUNT(DISTINCT li.id) FILTER (
-          WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched')
+          WHERE ces.engagement_tier IN ('watched', 'rewatched')
         ) AS completed_episodes,
         COUNT(DISTINCT li.id) FILTER (
           WHERE ces.engagement_tier IN ('engaged', 'sampled')
@@ -659,7 +659,7 @@ async function executeSeriesLevel(
         ces.season_number,
         COUNT(DISTINCT li.id) AS total_episodes,
         COUNT(DISTINCT li.id) FILTER (
-          WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched')
+          WHERE ces.engagement_tier IN ('watched', 'rewatched')
         ) AS completed_episodes
       FROM library_items li
       JOIN servers s ON li.server_id = s.id
@@ -753,7 +753,7 @@ async function executeSeriesLevel(
         ces.season_number,
         COUNT(DISTINCT li.id) AS total_episodes,
         COUNT(DISTINCT li.id) FILTER (
-          WHERE ces.engagement_tier IN ('completed', 'finished', 'rewatched')
+          WHERE ces.engagement_tier IN ('watched', 'rewatched')
         ) AS completed_episodes
       FROM library_items li
       LEFT JOIN content_engagement_summary ces

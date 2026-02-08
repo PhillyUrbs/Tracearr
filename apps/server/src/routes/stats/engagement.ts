@@ -108,8 +108,7 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
                 WHEN MAX(content_duration_ms) > 0 THEN
                   CASE
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 2.0 THEN 'rewatched'
-                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 1.0 THEN 'finished'
-                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.8 THEN 'completed'
+                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.85 THEN 'watched'
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.5 THEN 'engaged'
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.2 THEN 'sampled'
                     ELSE 'abandoned'
@@ -133,10 +132,10 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
               COUNT(DISTINCT server_user_id) AS unique_viewers,
               SUM(valid_sessions) AS valid_sessions,
               SUM(total_sessions) AS total_sessions,
-              COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched')) AS completions,
+              COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched')) AS completions,
               COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') AS rewatches,
               COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') AS abandonments,
-              ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched'))
+              ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched'))
                     / NULLIF(COUNT(*), 0), 1) AS completion_rate,
               ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier = 'abandoned')
                     / NULLIF(COUNT(*), 0), 1) AS abandonment_rate
@@ -166,14 +165,14 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
               COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') AS abandoned_count,
               COUNT(*) FILTER (WHERE engagement_tier = 'sampled') AS sampled_count,
               COUNT(*) FILTER (WHERE engagement_tier = 'engaged') AS engaged_count,
-              COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished')) AS completed_count,
+              COUNT(*) FILTER (WHERE engagement_tier = 'watched') AS watched_count,
               COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') AS rewatched_count,
-              ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched'))
+              ROUND(100.0 * COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched'))
                     / NULLIF(COUNT(*), 0), 1) AS completion_rate,
               CASE
                 WHEN COUNT(*) = 0 THEN 'inactive'
                 WHEN COUNT(*) FILTER (WHERE engagement_tier = 'rewatched') > COUNT(*) * 0.2 THEN 'rewatcher'
-                WHEN COUNT(*) FILTER (WHERE engagement_tier IN ('completed', 'finished', 'rewatched')) > COUNT(*) * 0.7 THEN 'completionist'
+                WHEN COUNT(*) FILTER (WHERE engagement_tier IN ('watched', 'rewatched')) > COUNT(*) * 0.7 THEN 'completionist'
                 WHEN COUNT(*) FILTER (WHERE engagement_tier = 'abandoned') > COUNT(*) * 0.5 THEN 'sampler'
                 ELSE 'casual'
               END AS behavior_type,
@@ -195,7 +194,7 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
               u.abandoned_count,
               u.sampled_count,
               u.engaged_count,
-              u.completed_count,
+              u.watched_count,
               u.rewatched_count,
               u.completion_rate,
               u.behavior_type,
@@ -274,8 +273,7 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
                 WHEN MAX(content_duration_ms) > 0 THEN
                   CASE
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 2.0 THEN 'rewatched'
-                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 1.0 THEN 'finished'
-                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.8 THEN 'completed'
+                    WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.85 THEN 'watched'
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.5 THEN 'engaged'
                     WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.2 THEN 'sampled'
                     ELSE 'abandoned'
@@ -300,9 +298,9 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
               SUM(ca.total_sessions) AS total_all_sessions,
               EXTRACT(DAYS FROM (MAX(ca.last_day) - MIN(ca.first_day)))::int AS viewing_span_days,
               COALESCE(ist.avg_episodes_per_viewing_day, 1.0) AS avg_episodes_per_viewing_day,
-              COUNT(*) FILTER (WHERE ca.engagement_tier IN ('completed', 'finished', 'rewatched')) AS completed_episodes,
+              COUNT(*) FILTER (WHERE ca.engagement_tier IN ('watched', 'rewatched')) AS completed_episodes,
               COUNT(*) FILTER (WHERE ca.engagement_tier = 'abandoned') AS abandoned_episodes,
-              ROUND(100.0 * COUNT(*) FILTER (WHERE ca.engagement_tier IN ('completed', 'finished', 'rewatched'))
+              ROUND(100.0 * COUNT(*) FILTER (WHERE ca.engagement_tier IN ('watched', 'rewatched'))
                     / NULLIF(COUNT(*), 0), 1) AS episode_completion_rate
             FROM content_agg ca
             LEFT JOIN intensity_stats ist ON ca.server_user_id = ist.server_user_id AND ca.show_title = ist.show_title
@@ -373,7 +371,7 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
       abandoned_count: number;
       sampled_count: number;
       engaged_count: number;
-      completed_count: number;
+      watched_count: number;
       rewatched_count: number;
       completion_rate: number;
       behavior_type: UserBehaviorType;
@@ -461,7 +459,7 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
       abandonedCount: Number(row.abandoned_count),
       sampledCount: Number(row.sampled_count),
       engagedCount: Number(row.engaged_count),
-      completedCount: Number(row.completed_count),
+      watchedCount: Number(row.watched_count),
       rewatchedCount: Number(row.rewatched_count),
       completionRate: Number(row.completion_rate),
       behaviorType: row.behavior_type,
@@ -609,8 +607,8 @@ export const engagementRoutes: FastifyPluginAsync = async (app) => {
             SUM(ca.valid_sessions) AS total_valid_sessions,
             SUM(ca.total_sessions) AS total_all_sessions,
             COALESCE(ist.avg_episodes_per_viewing_day, 1.0) AS avg_episodes_per_viewing_day,
-            COUNT(*) FILTER (WHERE ca.engagement_tier IN ('completed', 'finished', 'rewatched')) AS completed_episodes,
-            ROUND(100.0 * COUNT(*) FILTER (WHERE ca.engagement_tier IN ('completed', 'finished', 'rewatched'))
+            COUNT(*) FILTER (WHERE ca.engagement_tier IN ('watched', 'rewatched')) AS completed_episodes,
+            ROUND(100.0 * COUNT(*) FILTER (WHERE ca.engagement_tier IN ('watched', 'rewatched'))
                   / NULLIF(COUNT(*), 0), 1) AS episode_completion_rate
           FROM content_agg ca
           LEFT JOIN intensity_stats ist ON ca.server_user_id = ist.server_user_id AND ca.show_title = ist.show_title

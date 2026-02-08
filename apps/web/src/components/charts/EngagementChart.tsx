@@ -15,8 +15,7 @@ const TIER_COLORS: Record<string, string> = {
   abandoned: 'hsl(0, 70%, 50%)', // Red
   sampled: 'hsl(38, 92%, 50%)', // Orange
   engaged: 'hsl(48, 96%, 53%)', // Yellow
-  completed: 'hsl(142, 76%, 36%)', // Green
-  finished: 'hsl(160, 84%, 39%)', // Teal
+  watched: 'hsl(142, 76%, 36%)', // Green
   rewatched: 'hsl(217, 91%, 60%)', // Blue
   unknown: 'hsl(220, 9%, 46%)', // Gray
 };
@@ -24,9 +23,8 @@ const TIER_COLORS: Record<string, string> = {
 const TIER_LABELS: Record<string, string> = {
   abandoned: 'Abandoned (<20%)',
   sampled: 'Sampled (20-49%)',
-  engaged: 'Engaged (50-79%)',
-  completed: 'Completed (80-99%)',
-  finished: 'Finished (100%+)',
+  engaged: 'Engaged (50-84%)',
+  watched: 'Watched (85%+)',
   rewatched: 'Rewatched (200%+)',
   unknown: 'Unknown',
 };
@@ -47,15 +45,7 @@ export function EngagementBreakdownChart({
     }
 
     // Sort tiers in logical order
-    const tierOrder = [
-      'abandoned',
-      'sampled',
-      'engaged',
-      'completed',
-      'finished',
-      'rewatched',
-      'unknown',
-    ];
+    const tierOrder = ['abandoned', 'sampled', 'engaged', 'watched', 'rewatched', 'unknown'];
     const sortedData = [...data].sort(
       (a, b) => tierOrder.indexOf(a.tier) - tierOrder.indexOf(b.tier)
     );

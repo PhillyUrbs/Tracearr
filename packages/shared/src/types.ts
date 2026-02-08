@@ -1589,9 +1589,8 @@ export interface RunningTasksResponse {
 export type EngagementTier =
   | 'abandoned' // < 20%
   | 'sampled' // 20-49%
-  | 'engaged' // 50-79%
-  | 'completed' // 80-99%
-  | 'finished' // 100%+
+  | 'engaged' // 50-84%
+  | 'watched' // 85%+ (matches WATCH_COMPLETION_THRESHOLD)
   | 'rewatched' // 200%+
   | 'unknown'; // Missing duration data
 
@@ -1673,7 +1672,7 @@ export interface UserEngagementProfile {
   abandonedCount: number;
   sampledCount: number;
   engagedCount: number;
-  completedCount: number;
+  watchedCount: number;
   rewatchedCount: number;
   completionRate: number;
   behaviorType: UserBehaviorType;

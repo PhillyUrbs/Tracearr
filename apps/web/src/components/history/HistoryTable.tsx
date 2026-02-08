@@ -14,7 +14,6 @@ import {
   CircleHelp,
   Play,
   Pause,
-  Square,
   MonitorPlay,
   Zap,
   Cpu,
@@ -64,22 +63,16 @@ const ENGAGEMENT_TIER_CONFIG: Record<
     bgClass: 'bg-orange-100 dark:bg-orange-900/30',
   },
   engaged: {
-    label: 'Engaged (50-79%)',
+    label: 'Engaged (50-84%)',
     shortLabel: 'Engaged',
     color: 'text-yellow-600',
     bgClass: 'bg-yellow-100 dark:bg-yellow-900/30',
   },
-  completed: {
-    label: 'Completed (80-99%)',
-    shortLabel: 'Completed',
+  watched: {
+    label: 'Watched (85%+)',
+    shortLabel: 'Watched',
     color: 'text-green-600',
     bgClass: 'bg-green-100 dark:bg-green-900/30',
-  },
-  finished: {
-    label: 'Finished (100%)',
-    shortLabel: 'Finished',
-    color: 'text-teal-600',
-    bgClass: 'bg-teal-100 dark:bg-teal-900/30',
   },
   rewatched: {
     label: 'Rewatched (200%+)',
@@ -96,10 +89,10 @@ const ENGAGEMENT_TIER_CONFIG: Record<
 };
 
 // Calculate engagement tier from progress percentage
+// Uses 85% threshold to match WATCH_COMPLETION_THRESHOLD
 function getEngagementTier(progress: number): EngagementTier {
   if (progress >= 200) return 'rewatched';
-  if (progress >= 100) return 'finished';
-  if (progress >= 80) return 'completed';
+  if (progress >= 85) return 'watched';
   if (progress >= 50) return 'engaged';
   if (progress >= 20) return 'sampled';
   if (progress > 0) return 'abandoned';
@@ -155,11 +148,13 @@ interface Props {
 
 // State icon component
 function StateIcon({ state }: { state: SessionState }) {
-  const config: Record<SessionState, { icon: typeof Play; color: string; label: string }> = {
-    playing: { icon: Play, color: 'text-green-500', label: 'Playing' },
-    paused: { icon: Pause, color: 'text-yellow-500', label: 'Paused' },
-    stopped: { icon: Square, color: 'text-red-500', label: 'Stopped' },
-  };
+  if (state === 'stopped') return null;
+
+  const config: Record<'playing' | 'paused', { icon: typeof Play; color: string; label: string }> =
+    {
+      playing: { icon: Play, color: 'text-green-500', label: 'Playing' },
+      paused: { icon: Pause, color: 'text-yellow-500', label: 'Paused' },
+    };
   const { icon: Icon, color, label } = config[state];
   return (
     <Tooltip>
