@@ -86,6 +86,8 @@ listen_addresses = '127.0.0.1'
 port = 5432
 log_timezone = 'UTC'
 timezone = 'UTC'
+# Disable TimescaleDB telemetry
+timescaledb.telemetry_level = off
 # Allow unlimited tuple decompression for migrations on compressed hypertables
 timescaledb.max_tuples_decompressed_per_dml_transaction = 0
 # Increase lock table size for TimescaleDB hypertables with many chunks

@@ -49,10 +49,7 @@ services:
       - tracearr-network
 
   timescale:
-    # Official TimescaleDB image with PostgreSQL 16
-    # Note: TimescaleDB Toolkit is not included in the official image
-    # For Toolkit support, use the supervised deployment instead
-    image: timescale/timescaledb:latest-pg16
+    image: timescale/timescaledb:2.25.0-pg16
     container_name: tracearr-db
     shm_size: 512mb  # Required for PostgreSQL shared memory (increase for large imports)
     ulimits:
@@ -61,7 +58,7 @@ services:
         hard: 65536  # TimescaleDB chunks require many file descriptors
     # Allow unlimited tuple decompression for migrations on compressed hypertables
     # Increase lock table size for large imports (Tautulli imports with many TimescaleDB chunks)
-    command: postgres -c timescaledb.max_tuples_decompressed_per_dml_transaction=0 -c max_locks_per_transaction=4096
+    command: postgres -c timescaledb.max_tuples_decompressed_per_dml_transaction=0 -c max_locks_per_transaction=4096 -c timescaledb.telemetry_level=off
     environment:
       - POSTGRES_USER=tracearr
       - POSTGRES_PASSWORD=${DB_PASSWORD:-tracearr}
