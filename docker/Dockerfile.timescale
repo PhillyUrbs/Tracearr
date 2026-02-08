@@ -24,6 +24,7 @@ RUN apt-get update \
 # Memory cost: 4096 * max_connections * ~256 bytes = ~100MB at 100 connections (trivial)
 RUN echo "shared_preload_libraries = 'timescaledb'" >> /usr/share/postgresql/postgresql.conf.sample \
     && echo "timescaledb.max_tuples_decompressed_per_dml_transaction = 0" >> /usr/share/postgresql/postgresql.conf.sample \
+    && echo "timescaledb.telemetry_level = off" >> /usr/share/postgresql/postgresql.conf.sample \
     && echo "max_locks_per_transaction = 4096" >> /usr/share/postgresql/postgresql.conf.sample
 
 # OCI image labels for container registries and tools like Renovate
