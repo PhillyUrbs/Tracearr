@@ -291,16 +291,23 @@ export function StreamDetailsPanel({
 
   return (
     <div className="space-y-3">
-      {/* Container info */}
-      {transcodeInfo?.sourceContainer && (
+      {(transcodeInfo?.sourceContainer || bitrate) && (
         <>
-          <ComparisonRow
-            label="Container"
-            sourceValue={formatMediaTech(transcodeInfo.sourceContainer)}
-            streamValue={formatMediaTech(
-              transcodeInfo.streamContainer ?? transcodeInfo.sourceContainer
-            )}
-          />
+          {transcodeInfo?.sourceContainer && (
+            <ComparisonRow
+              label="Container"
+              sourceValue={formatMediaTech(transcodeInfo.sourceContainer)}
+              streamValue={formatMediaTech(
+                transcodeInfo.streamContainer ?? transcodeInfo.sourceContainer
+              )}
+            />
+          )}
+          {!!bitrate && (
+            <div className="flex justify-between py-1 text-sm">
+              <span className="text-muted-foreground">Bitrate</span>
+              <span className="font-medium">{formatBitrate(bitrate)}</span>
+            </div>
+          )}
           <Separator />
         </>
       )}
@@ -535,14 +542,6 @@ export function StreamDetailsPanel({
             </div>
           </CollapsibleContent>
         </Collapsible>
-      )}
-
-      {/* Overall bitrate */}
-      {!!bitrate && (
-        <div className="flex justify-between border-t pt-1 text-sm">
-          <span className="text-muted-foreground">Total Bitrate</span>
-          <span className="font-medium">{formatBitrate(bitrate)}</span>
-        </div>
       )}
     </div>
   );
