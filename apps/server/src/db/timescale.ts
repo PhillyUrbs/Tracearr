@@ -22,14 +22,15 @@ import { PRIMARY_MEDIA_TYPES_SQL_LITERAL } from '../constants/mediaTypes.js';
  * - 5: Added music_count to library_stats_daily for /growth route optimization
  * - 6: Removed unused aggregates (daily_plays_by_user, daily_plays_by_server,
  *      daily_stats_summary, hourly_concurrent_streams) - no routes query them
+ * - 7: Added materialized_only=false to all aggregates, removed toolkit/fallback split
+ *      (no toolkit hyperfunctions were actually used)
  */
-const AGGREGATE_SCHEMA_VERSION = 6;
+const AGGREGATE_SCHEMA_VERSION = 7;
 
 /** Config for a continuous aggregate view */
 interface AggregateDefinition {
   name: string;
-  toolkitSql: string;
-  fallbackSql: string;
+  sql: string;
   refreshPolicy: {
     startOffset: string;
     endOffset: string;
@@ -53,36 +54,9 @@ function getAggregateDefinitions(): AggregateDefinition[] {
     {
       // Used by: /stats/engagement, /library/completion, /library/patterns
       name: 'daily_content_engagement',
-      toolkitSql: `
+      sql: `
         CREATE MATERIALIZED VIEW IF NOT EXISTS daily_content_engagement
         WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
-        SELECT
-          time_bucket('1 day', started_at) AS day,
-          server_user_id,
-          rating_key,
-          MAX(media_title) AS media_title,
-          MAX(grandparent_title) AS show_title,
-          MAX(media_type) AS media_type,
-          MAX(total_duration_ms) AS content_duration_ms,
-          MAX(thumb_path) AS thumb_path,
-          MAX(server_id::text)::uuid AS server_id,
-          MAX(season_number) AS season_number,
-          MAX(episode_number) AS episode_number,
-          MAX(year) AS year,
-          SUM(CASE WHEN duration_ms >= 120000 THEN duration_ms ELSE 0 END) AS watched_ms,
-          COUNT(*) FILTER (WHERE duration_ms >= 120000) AS valid_session_count,
-          COUNT(*) AS total_session_count,
-          BOOL_OR(watched) AS any_marked_watched
-        FROM sessions
-        WHERE rating_key IS NOT NULL
-          AND total_duration_ms > 0
-          AND ${mediaFilter}
-        GROUP BY day, server_user_id, rating_key
-        WITH NO DATA
-      `,
-      fallbackSql: `
-        CREATE MATERIALIZED VIEW IF NOT EXISTS daily_content_engagement
-        WITH (timescaledb.continuous) AS
         SELECT
           time_bucket('1 day', started_at) AS day,
           server_user_id,
@@ -116,28 +90,9 @@ function getAggregateDefinitions(): AggregateDefinition[] {
     {
       // Used by: /bandwidth/*
       name: 'daily_bandwidth_by_user',
-      toolkitSql: `
+      sql: `
         CREATE MATERIALIZED VIEW IF NOT EXISTS daily_bandwidth_by_user
         WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
-        SELECT
-          time_bucket('1 day', started_at) AS day,
-          server_id,
-          server_user_id,
-          COUNT(*) AS session_count,
-          -- Store the product of bitrate * duration for accurate bandwidth calculation
-          -- Formula: SUM(bitrate * duration_ms) / 8 / 1000 = total megabytes transferred
-          SUM(COALESCE(bitrate, 0)::bigint * COALESCE(duration_ms, 0)::bigint) AS total_bits_ms,
-          AVG(COALESCE(bitrate, 0))::BIGINT AS avg_bitrate,
-          MAX(COALESCE(bitrate, 0)) AS peak_bitrate,
-          SUM(COALESCE(duration_ms, 0)) AS total_duration_ms
-        FROM sessions
-        WHERE started_at IS NOT NULL
-        GROUP BY day, server_id, server_user_id
-        WITH NO DATA
-      `,
-      fallbackSql: `
-        CREATE MATERIALIZED VIEW IF NOT EXISTS daily_bandwidth_by_user
-        WITH (timescaledb.continuous) AS
         SELECT
           time_bucket('1 day', started_at) AS day,
           server_id,
@@ -166,30 +121,9 @@ function getAggregateDefinitions(): AggregateDefinition[] {
       name: 'library_stats_daily',
       // Use MAX() not SUM() - multiple snapshots per day represent the same library state
       // If a library has 1000 items and 3 snapshots exist, SUM would incorrectly produce 3000
-      toolkitSql: `
+      sql: `
         CREATE MATERIALIZED VIEW IF NOT EXISTS library_stats_daily
         WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
-        SELECT
-          time_bucket('1 day', snapshot_time) AS day,
-          server_id,
-          library_id,
-          MAX(item_count) AS total_items,
-          MAX(total_size) AS total_size_bytes,
-          MAX(movie_count) AS movie_count,
-          MAX(episode_count) AS episode_count,
-          MAX(show_count) AS show_count,
-          MAX(music_count) AS music_count,
-          MAX(count_4k) AS count_4k,
-          MAX(count_1080p) AS count_1080p,
-          MAX(count_720p) AS count_720p,
-          MAX(count_sd) AS count_sd
-        FROM library_snapshots
-        GROUP BY day, server_id, library_id
-        WITH NO DATA
-      `,
-      fallbackSql: `
-        CREATE MATERIALIZED VIEW IF NOT EXISTS library_stats_daily
-        WITH (timescaledb.continuous) AS
         SELECT
           time_bucket('1 day', snapshot_time) AS day,
           server_id,
@@ -219,27 +153,9 @@ function getAggregateDefinitions(): AggregateDefinition[] {
       name: 'content_quality_daily',
       // Server-level quality and codec metrics for tracking quality evolution over time
       // Use MAX() not SUM() - multiple intra-day snapshots represent the same server state
-      toolkitSql: `
+      sql: `
         CREATE MATERIALIZED VIEW IF NOT EXISTS content_quality_daily
         WITH (timescaledb.continuous, timescaledb.materialized_only = false) AS
-        SELECT
-          time_bucket('1 day', snapshot_time) AS day,
-          server_id,
-          MAX(item_count) AS total_items,
-          MAX(count_4k) AS count_4k,
-          MAX(count_1080p) AS count_1080p,
-          MAX(count_720p) AS count_720p,
-          MAX(count_sd) AS count_sd,
-          MAX(hevc_count) AS hevc_count,
-          MAX(h264_count) AS h264_count,
-          MAX(av1_count) AS av1_count
-        FROM library_snapshots
-        GROUP BY day, server_id
-        WITH NO DATA
-      `,
-      fallbackSql: `
-        CREATE MATERIALIZED VIEW IF NOT EXISTS content_quality_daily
-        WITH (timescaledb.continuous) AS
         SELECT
           time_bucket('1 day', snapshot_time) AS day,
           server_id,
@@ -290,11 +206,7 @@ async function continuousAggregateExists(name: string): Promise<boolean> {
 // Library aggregates that require library_snapshots to be a hypertable
 const LIBRARY_AGGREGATES = ['library_stats_daily', 'content_quality_daily'];
 
-async function createAggregate(
-  def: AggregateDefinition,
-  hasToolkit: boolean,
-  skipLibraryInit = false
-): Promise<void> {
+async function createAggregate(def: AggregateDefinition, skipLibraryInit = false): Promise<void> {
   // Check if aggregate already exists - skip if so
   const exists = await continuousAggregateExists(def.name);
   if (exists) {
@@ -307,12 +219,11 @@ async function createAggregate(
     await initLibrarySnapshotsHypertable();
   }
 
-  const sqlStatement = hasToolkit ? def.toolkitSql : def.fallbackSql;
   try {
-    await db.execute(sql.raw(sqlStatement));
+    await db.execute(sql.raw(def.sql));
   } catch (error) {
     console.error(`[TimescaleDB] Failed to create aggregate ${def.name}:`, error);
-    throw error; // Re-throw to allow caller to handle
+    throw error;
   }
 }
 
@@ -829,39 +740,23 @@ async function createLibraryAggregates(): Promise<void> {
     (def) => def.name === 'library_stats_daily' || def.name === 'content_quality_daily'
   );
 
-  // Library aggregates don't use HyperLogLog, they use simple MAX() aggregation
-  // Pass hasToolkit=true to use toolkitSql which is identical to fallbackSql for these
-  // Pass skipLibraryInit=true to prevent infinite recursion (we're already in library init)
+  // skipLibraryInit=true to prevent infinite recursion (we're already in library init)
   for (const def of libraryAggregates) {
-    await createAggregate(def, true, true);
+    await createAggregate(def, true);
   }
 }
 
-/**
- * Create continuous aggregates for dashboard performance
- *
- * Uses HyperLogLog from TimescaleDB Toolkit for approximate distinct counts
- * (99.5% accuracy) since TimescaleDB doesn't support COUNT(DISTINCT) in
- * continuous aggregates. Falls back to COUNT(*) if Toolkit unavailable.
- */
+/** Create continuous aggregates for dashboard performance */
 async function createContinuousAggregates(): Promise<void> {
-  const hasToolkit = await isToolkitInstalled();
   const definitions = getAggregateDefinitions();
 
   // Drop old unused aggregates
-  // daily_plays_by_platform: platform stats use prepared statement instead
-  // daily_play_patterns/hourly_play_patterns: never wired up, missing server_id for multi-server filtering
   await db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS daily_plays_by_platform CASCADE`);
   await db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS daily_play_patterns CASCADE`);
   await db.execute(sql`DROP MATERIALIZED VIEW IF EXISTS hourly_play_patterns CASCADE`);
 
-  if (!hasToolkit) {
-    console.warn('TimescaleDB Toolkit not available - using COUNT(*) aggregates');
-  }
-
-  // Create all aggregates from shared definitions
   for (const def of definitions) {
-    await createAggregate(def, hasToolkit);
+    await createAggregate(def);
   }
 }
 
@@ -1280,8 +1175,7 @@ export async function initTimescaleDB(): Promise<{
 
   actions.push('TimescaleDB extension found');
 
-  // Enable TimescaleDB Toolkit for HyperLogLog (approximate distinct counts)
-  // Check if available first to avoid noisy PostgreSQL errors in logs
+  // Enable Toolkit if available - not using any hyperfunctions yet but might later
   const toolkitAvailable = await isToolkitAvailableOnSystem();
   if (toolkitAvailable) {
     const toolkitInstalled = await isToolkitInstalled();
@@ -1768,7 +1662,7 @@ export async function rebuildTimescaleViews(
     };
   }
 
-  const totalSteps = fullRefresh ? 11 : 10;
+  const totalSteps = fullRefresh ? 6 : 5;
   const report = (step: number, msg: string) => {
     progressCallback?.(step, totalSteps, msg);
   };
@@ -1782,36 +1676,29 @@ export async function rebuildTimescaleViews(
       await db.execute(sql.raw(`DROP MATERIALIZED VIEW IF EXISTS ${def.name} CASCADE`));
     }
 
-    // Step 2: Check for toolkit
-    report(2, 'Checking TimescaleDB Toolkit availability...');
-    const hasToolkit = await isToolkitInstalled();
-
-    // Step 3: Recreate all continuous aggregates with current definitions
-    // Note: createAggregate() ensures library_snapshots hypertable exists for library aggregates
-    report(3, 'Creating continuous aggregates with updated definitions...');
+    // Step 2: Recreate all continuous aggregates with current definitions
+    report(2, 'Creating continuous aggregates with updated definitions...');
     for (const def of definitions) {
-      await createAggregate(def, hasToolkit);
+      await createAggregate(def);
     }
 
-    // Step 4: Add refresh policies for all aggregates
-    report(4, 'Setting up refresh policies...');
+    // Step 3: Add refresh policies for all aggregates
+    report(3, 'Setting up refresh policies...');
     for (const def of definitions) {
       await addRefreshPolicy(def);
     }
 
-    // Steps 5-9: Create all engagement views
-    report(5, 'Creating engagement views...');
+    // Step 4: Create all engagement views
+    report(4, 'Creating engagement views...');
     await ensureEngagementViews();
 
-    // Step 10: Optionally refresh historical data
+    // Step 5: Optionally refresh historical data
     if (fullRefresh) {
-      report(10, 'Refreshing historical data (this may take a while)...');
+      report(5, 'Refreshing historical data (this may take a while)...');
       await refreshAggregates({ fullRefresh: true });
-      report(11, 'Historical data refresh complete');
+      report(6, 'Historical data refresh complete');
     } else {
-      // Skip full historical refresh - it can take minutes/hours with large datasets
-      // The scheduled refresh policies will catch up over time (every 5 minutes)
-      report(10, 'Skipping historical refresh - policies will catch up automatically');
+      report(5, 'Skipping historical refresh - policies will catch up automatically');
     }
 
     return {
