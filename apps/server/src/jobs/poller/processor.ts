@@ -357,10 +357,11 @@ async function processServerSessions(
             }
 
             // Check if this session was recently terminated (cooldown prevents re-creation)
-            if (cacheService) {
+            if (cacheService && processed.ratingKey) {
               const hasCooldown = await cacheService.hasTerminationCooldown(
                 server.id,
-                processed.sessionKey
+                processed.sessionKey,
+                processed.ratingKey
               );
               if (hasCooldown) {
                 console.log(
@@ -515,15 +516,18 @@ async function processServerSessions(
 
               // Check if this session was recently terminated (cooldown prevents re-creation)
               // Note: cacheService is guaranteed non-null here since we're inside withSessionCreateLock
-              const hasCooldown = await cacheService!.hasTerminationCooldown(
-                server.id,
-                processed.sessionKey
-              );
-              if (hasCooldown) {
-                console.log(
-                  `[Poller] Session ${processed.sessionKey} was recently terminated, skipping stale recovery`
+              if (processed.ratingKey) {
+                const hasCooldown = await cacheService!.hasTerminationCooldown(
+                  server.id,
+                  processed.sessionKey,
+                  processed.ratingKey
                 );
-                return null;
+                if (hasCooldown) {
+                  console.log(
+                    `[Poller] Session ${processed.sessionKey} was recently terminated, skipping stale recovery`
+                  );
+                  return null;
+                }
               }
 
               // Issue #121: Check if there's already an active session for same user+content

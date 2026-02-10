@@ -178,10 +178,11 @@ async function handlePlaying(event: {
       await updateExistingSession(existingSession, session, 'playing');
     } else {
       // Check if this session was recently terminated (cooldown prevents re-creation)
-      if (cacheService) {
+      if (cacheService && session.ratingKey) {
         const hasCooldown = await cacheService.hasTerminationCooldown(
           serverId,
-          notification.sessionKey
+          notification.sessionKey,
+          session.ratingKey
         );
         if (hasCooldown) {
           console.log(
