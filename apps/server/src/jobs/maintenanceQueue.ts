@@ -30,7 +30,7 @@ import { sql, isNotNull, or, and, eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { sessions, serverUsers } from '../db/schema.js';
 import { normalizeClient, normalizePlatformName } from '../utils/platformNormalizer.js';
-import { getPubSubService } from '../services/cache.js';
+import { getCacheService, getPubSubService } from '../services/cache.js';
 import {
   rebuildTimescaleViews,
   safeFullRefreshAllAggregates,
@@ -1052,7 +1052,7 @@ async function processRebuildTimescaleViewsJob(
   try {
     await publishProgress();
 
-    const fullRefresh = job.data.options?.fullRefresh ?? false;
+    const fullRefresh = job.data.options?.fullRefresh ?? true;
 
     // Track last lock extension to avoid excessive Redis calls
     let lastLockExtension = Date.now();
@@ -1084,6 +1084,16 @@ async function processRebuildTimescaleViewsJob(
     const durationMs = Date.now() - startTime;
 
     if (result.success) {
+      // Flush cached stats that depend on the rebuilt aggregates
+      const cacheService = getCacheService();
+      if (cacheService) {
+        const prefix = getRedisPrefix();
+        await Promise.all([
+          cacheService.invalidatePattern(`${prefix}tracearr:library:*`),
+          cacheService.invalidatePattern(`${prefix}tracearr:stats:dashboard*`),
+        ]);
+      }
+
       activeJobProgress.status = 'complete';
       activeJobProgress.processedRecords = 9;
       activeJobProgress.updatedRecords = 6; // Number of views created
@@ -2152,6 +2162,16 @@ async function processFullAggregateRebuildJob(
     });
 
     const durationMs = Date.now() - startTime;
+
+    // Flush cached stats that depend on the rebuilt aggregates
+    const cacheService = getCacheService();
+    if (cacheService) {
+      const prefix = getRedisPrefix();
+      await Promise.all([
+        cacheService.invalidatePattern(`${prefix}tracearr:library:*`),
+        cacheService.invalidatePattern(`${prefix}tracearr:stats:dashboard*`),
+      ]);
+    }
 
     // Capture final counts before clearing progress
     const finalProcessed = activeJobProgress?.totalRecords ?? 4;

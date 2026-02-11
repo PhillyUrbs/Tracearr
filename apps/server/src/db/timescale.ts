@@ -24,8 +24,9 @@ import { PRIMARY_MEDIA_TYPES_SQL_LITERAL } from '../constants/mediaTypes.js';
  *      daily_stats_summary, hourly_concurrent_streams) - no routes query them
  * - 7: Added materialized_only=false to all aggregates, removed toolkit/fallback split
  *      (no toolkit hyperfunctions were actually used)
+ * - 8: Fixed plays calculation in content_engagement_summary to align with 85% "watched"
  */
-const AGGREGATE_SCHEMA_VERSION = 7;
+const AGGREGATE_SCHEMA_VERSION = 8;
 
 /** Config for a continuous aggregate view */
 interface AggregateDefinition {
@@ -1261,10 +1262,10 @@ export async function initTimescaleDB(): Promise<{
     actions.push(
       `Schema version changed (${storedVersion} → ${AGGREGATE_SCHEMA_VERSION}) - rebuilding all aggregates`
     );
-    const rebuildResult = await rebuildTimescaleViews();
+    const rebuildResult = await rebuildTimescaleViews({ fullRefresh: true });
     if (rebuildResult.success) {
       await setStoredSchemaVersion(AGGREGATE_SCHEMA_VERSION);
-      actions.push('Successfully rebuilt all aggregates with updated definitions');
+      actions.push('Successfully rebuilt all aggregates with full historical backfill');
     } else {
       actions.push(`Warning: Failed to rebuild aggregates: ${rebuildResult.message}`);
     }
@@ -1414,7 +1415,10 @@ async function ensureEngagementViews(): Promise<void> {
       END AS completion_pct,
       CASE
         WHEN MAX(content_duration_ms) > 0 THEN
-          GREATEST(0, FLOOR(SUM(watched_ms)::float / MAX(content_duration_ms)))::int
+          GREATEST(
+            CASE WHEN SUM(watched_ms) >= MAX(content_duration_ms) * 0.85 THEN 1 ELSE 0 END,
+            FLOOR(SUM(watched_ms)::float / MAX(content_duration_ms))
+          )::int
         ELSE 0
       END AS plays,
       CASE
