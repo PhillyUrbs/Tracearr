@@ -67,8 +67,13 @@ function NavMenuGroup({ group }: { group: NavGroup }) {
         <CollapsibleContent>
           <SidebarMenuSub>
             {group.children.map((child) => {
-              const childIsActive =
-                location.pathname === child.href || location.pathname.startsWith(child.href + '/');
+              const isParentOfSiblings = group.children.some(
+                (other) => other !== child && other.href.startsWith(child.href + '/')
+              );
+              const childIsActive = isParentOfSiblings
+                ? location.pathname === child.href
+                : location.pathname === child.href ||
+                  location.pathname.startsWith(child.href + '/');
               return (
                 <SidebarMenuSubItem key={child.href}>
                   <SidebarMenuSubButton asChild isActive={childIsActive}>
