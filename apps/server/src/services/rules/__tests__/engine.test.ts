@@ -133,6 +133,7 @@ function createMockRule(overrides: Partial<RuleV2> = {}): RuleV2 {
     description: null,
     serverId: null,
     isActive: true,
+    severity: 'warning',
     conditions: { groups: [] },
     actions: { actions: [] },
     createdAt: new Date(),
@@ -174,6 +175,7 @@ describe('evaluateRule', () => {
       expect(result.matched).toBe(true);
       expect(result.matchedGroups).toEqual([]);
       expect(result.actions).toEqual([{ type: 'log_only' }]);
+      expect(result.evidence).toEqual([]);
     });
 
     it('does not match when conditions is null', () => {
@@ -185,6 +187,7 @@ describe('evaluateRule', () => {
       const result = evaluateRule(ctx);
 
       expect(result.matched).toBe(false);
+      expect(result.evidence).toBeUndefined();
     });
   });
 
@@ -198,7 +201,8 @@ describe('evaluateRule', () => {
             },
           ],
         },
-        actions: { actions: [{ type: 'create_violation', severity: 'warning' }] },
+        severity: 'warning',
+        actions: { actions: [] },
       });
 
       const ctx = createTestContext(rule, {
@@ -345,7 +349,8 @@ describe('evaluateRule', () => {
             { conditions: [{ field: 'trust_score', operator: 'lt', value: 70 }] },
           ],
         },
-        actions: { actions: [{ type: 'create_violation', severity: 'high' }] },
+        severity: 'high',
+        actions: { actions: [] },
       });
 
       const ctx = createTestContext(rule, {
@@ -361,7 +366,7 @@ describe('evaluateRule', () => {
 
       expect(result.matched).toBe(true);
       expect(result.matchedGroups).toEqual([0, 1, 2]);
-      expect(result.actions).toEqual([{ type: 'create_violation', severity: 'high' }]);
+      expect(result.actions).toEqual([]);
     });
 
     it('user exclusion works (user NOT IN [excluded])', () => {

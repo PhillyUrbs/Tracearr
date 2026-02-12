@@ -20,6 +20,7 @@ export default mergeConfig(
       name: 'services',
       include: [
         'src/services/__tests__/*.test.ts',
+        'src/services/**/__tests__/*.test.ts',
         'src/jobs/__tests__/*.test.ts',
         'src/jobs/poller/__tests__/*.test.ts',
       ],

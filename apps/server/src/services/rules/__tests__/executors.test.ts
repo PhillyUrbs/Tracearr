@@ -5,7 +5,6 @@ import type {
   Session,
   Server,
   ServerUser,
-  CreateViolationAction,
   NotifyAction,
   AdjustTrustAction,
   SetTrustAction,
@@ -134,6 +133,7 @@ function createMockRule(overrides: Partial<RuleV2> = {}): RuleV2 {
     description: 'A test rule',
     serverId: null,
     isActive: true,
+    severity: 'warning',
     conditions: { groups: [] },
     actions: { actions: [] },
     createdAt: new Date(),
@@ -157,7 +157,6 @@ function createMockContext(overrides: Partial<EvaluationContext> = {}): Evaluati
 
 function createMockDeps(): ActionExecutorDeps {
   return {
-    createViolation: vi.fn().mockResolvedValue(undefined),
     logAudit: vi.fn().mockResolvedValue(undefined),
     sendNotification: vi.fn().mockResolvedValue(undefined),
     adjustUserTrust: vi.fn().mockResolvedValue(undefined),
@@ -181,7 +180,7 @@ describe('Action Executor Registry', () => {
       const deps = getActionExecutorDeps();
       expect(deps).toBeDefined();
       // Default deps should not throw
-      expect(async () => await deps.createViolation({} as never)).not.toThrow();
+      expect(async () => await deps.logAudit({} as never)).not.toThrow();
     });
 
     it('should allow setting custom dependencies', () => {
@@ -201,7 +200,6 @@ describe('Action Executor Registry', () => {
   describe('Executor Registry', () => {
     it('should have executors for all action types', () => {
       const expectedTypes = [
-        'create_violation',
         'log_only',
         'notify',
         'adjust_trust',
@@ -238,29 +236,6 @@ describe('Action Executor Registry', () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain('Unknown action type');
-    });
-
-    describe('create_violation', () => {
-      it('should create violation with context data', async () => {
-        const context = createMockContext();
-        const action: CreateViolationAction = { type: 'create_violation', severity: 'warning' };
-
-        const result = await executeAction(context, action);
-
-        expect(result.success).toBe(true);
-        expect(mockDeps.createViolation).toHaveBeenCalledWith({
-          ruleId: context.rule.id,
-          ruleName: context.rule.name,
-          sessionId: context.session.id,
-          serverUserId: context.serverUser.id,
-          serverId: context.server.id,
-          severity: 'warning',
-          details: expect.objectContaining({
-            sessionKey: context.session.sessionKey,
-            mediaTitle: context.session.mediaTitle,
-          }),
-        });
-      });
     });
 
     describe('log_only', () => {
@@ -691,7 +666,7 @@ describe('Action Executor Registry', () => {
     it('should execute all actions in sequence', async () => {
       const context = createMockContext();
       const actions: Action[] = [
-        { type: 'create_violation', severity: 'warning' },
+        { type: 'log_only', message: 'Test' },
         { type: 'adjust_trust', amount: -10 },
         { type: 'notify', channels: ['discord'] },
       ];
@@ -700,18 +675,16 @@ describe('Action Executor Registry', () => {
 
       expect(results).toHaveLength(3);
       expect(results.every((r) => r.success)).toBe(true);
-      expect(mockDeps.createViolation).toHaveBeenCalled();
+      expect(mockDeps.logAudit).toHaveBeenCalled();
       expect(mockDeps.adjustUserTrust).toHaveBeenCalled();
       expect(mockDeps.sendNotification).toHaveBeenCalled();
     });
 
     it('should continue executing after an action fails', async () => {
-      (mockDeps.createViolation as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('DB error')
-      );
+      (mockDeps.logAudit as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Audit error'));
       const context = createMockContext();
       const actions: Action[] = [
-        { type: 'create_violation', severity: 'warning' },
+        { type: 'log_only', message: 'Test' },
         { type: 'notify', channels: ['discord'] },
       ];
 

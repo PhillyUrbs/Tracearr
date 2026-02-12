@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Condition, Session, ServerUser, Server, RuleV2 } from '@tracearr/shared';
-import type { EvaluationContext } from '../types.js';
+import type { EvaluationContext, EvaluatorResult } from '../types.js';
 import {
   evaluatorRegistry,
   getResolution,
@@ -144,6 +144,7 @@ function createMockRule(overrides: Partial<RuleV2> = {}): RuleV2 {
     description: null,
     serverId: null,
     isActive: true,
+    severity: 'warning',
     conditions: { groups: [] },
     actions: { actions: [] },
     createdAt: new Date(),
@@ -177,6 +178,14 @@ function createCondition(overrides: Partial<Condition>): Condition {
     value: 1,
     ...overrides,
   } as Condition;
+}
+
+// Helper to extract matched result from evaluator (handles sync/async)
+function matched(result: EvaluatorResult | Promise<EvaluatorResult>): boolean {
+  if (result instanceof Promise) {
+    throw new Error('Use await for async evaluators');
+  }
+  return result.matched;
 }
 
 describe('Helper Functions', () => {
@@ -327,7 +336,7 @@ describe('Helper Functions', () => {
 
 describe('Session Behavior Evaluators', () => {
   describe('concurrent_streams', () => {
-    it('counts active sessions for user', () => {
+    it('counts active sessions for user', async () => {
       const session1 = createMockSession({ id: 's1', serverUserId: 'user-1' });
       const session2 = createMockSession({ id: 's2', serverUserId: 'user-1' });
       const session3 = createMockSession({ id: 's3', serverUserId: 'user-2' });
@@ -340,15 +349,26 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.concurrent_streams;
 
-      expect(
-        evaluator(ctx, createCondition({ field: 'concurrent_streams', operator: 'eq', value: 2 }))
-      ).toBe(true);
-      expect(
-        evaluator(ctx, createCondition({ field: 'concurrent_streams', operator: 'gt', value: 1 }))
-      ).toBe(true);
-      expect(
-        evaluator(ctx, createCondition({ field: 'concurrent_streams', operator: 'gt', value: 2 }))
-      ).toBe(false);
+      const result1 = await evaluator(
+        ctx,
+        createCondition({ field: 'concurrent_streams', operator: 'eq', value: 2 })
+      );
+      expect(result1.matched).toBe(true);
+      expect(result1.actual).toBe(2);
+
+      const result2 = await evaluator(
+        ctx,
+        createCondition({ field: 'concurrent_streams', operator: 'gt', value: 1 })
+      );
+      expect(result2.matched).toBe(true);
+      expect(result2.actual).toBe(2);
+
+      const result3 = await evaluator(
+        ctx,
+        createCondition({ field: 'concurrent_streams', operator: 'gt', value: 2 })
+      );
+      expect(result3.matched).toBe(false);
+      expect(result3.actual).toBe(2);
     });
   });
 
@@ -368,9 +388,11 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.active_session_distance_km;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'active_session_distance_km', operator: 'eq', value: 0 })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'active_session_distance_km', operator: 'eq', value: 0 })
+          )
         )
       ).toBe(true);
     });
@@ -397,15 +419,19 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.active_session_distance_km;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'active_session_distance_km', operator: 'gt', value: 3000 })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'active_session_distance_km', operator: 'gt', value: 3000 })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'active_session_distance_km', operator: 'gt', value: 5000 })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'active_session_distance_km', operator: 'gt', value: 5000 })
+          )
         )
       ).toBe(false);
     });
@@ -443,10 +469,14 @@ describe('Session Behavior Evaluators', () => {
       const evaluator = evaluatorRegistry.travel_speed_kmh;
       // ~350km in 2 hours = ~175 km/h
       expect(
-        evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 100 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 100 }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 300 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 300 }))
+        )
       ).toBe(false);
     });
 
@@ -465,7 +495,9 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.travel_speed_kmh;
       expect(
-        evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'eq', value: 0 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'eq', value: 0 }))
+        )
       ).toBe(true);
     });
 
@@ -496,7 +528,12 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.travel_speed_kmh;
       expect(
-        evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 10000 }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'travel_speed_kmh', operator: 'gt', value: 10000 })
+          )
+        )
       ).toBe(true);
     });
 
@@ -528,7 +565,9 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.travel_speed_kmh;
       expect(
-        evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'eq', value: 0 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'travel_speed_kmh', operator: 'eq', value: 0 }))
+        )
       ).toBe(true);
     });
   });
@@ -566,14 +605,16 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.unique_ips_in_window;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_ips_in_window',
-            operator: 'eq',
-            value: 3,
-            params: { window_hours: 24 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_ips_in_window',
+              operator: 'eq',
+              value: 3,
+              params: { window_hours: 24 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -611,14 +652,16 @@ describe('Session Behavior Evaluators', () => {
       const evaluator = evaluatorRegistry.unique_ips_in_window;
       // 1 hour window should only include sessions 1 and 2
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_ips_in_window',
-            operator: 'eq',
-            value: 2,
-            params: { window_hours: 1 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_ips_in_window',
+              operator: 'eq',
+              value: 2,
+              params: { window_hours: 1 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -648,14 +691,16 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.unique_ips_in_window;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_ips_in_window',
-            operator: 'eq',
-            value: 1,
-            params: { window_hours: 24 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_ips_in_window',
+              operator: 'eq',
+              value: 1,
+              params: { window_hours: 24 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -678,13 +723,15 @@ describe('Session Behavior Evaluators', () => {
       const evaluator = evaluatorRegistry.unique_ips_in_window;
       // Should work without params
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_ips_in_window',
-            operator: 'eq',
-            value: 1,
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_ips_in_window',
+              operator: 'eq',
+              value: 1,
+            })
+          )
         )
       ).toBe(true);
     });
@@ -718,14 +765,16 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.unique_devices_in_window;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_devices_in_window',
-            operator: 'eq',
-            value: 2,
-            params: { window_hours: 24 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_devices_in_window',
+              operator: 'eq',
+              value: 2,
+              params: { window_hours: 24 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -757,14 +806,16 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.unique_devices_in_window;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_devices_in_window',
-            operator: 'eq',
-            value: 2,
-            params: { window_hours: 24 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_devices_in_window',
+              operator: 'eq',
+              value: 2,
+              params: { window_hours: 24 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -796,14 +847,16 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.unique_devices_in_window;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'unique_devices_in_window',
-            operator: 'eq',
-            value: 1,
-            params: { window_hours: 24 },
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'unique_devices_in_window',
+              operator: 'eq',
+              value: 1,
+              params: { window_hours: 24 },
+            })
+          )
         )
       ).toBe(true);
     });
@@ -818,10 +871,14 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.inactive_days;
       expect(
-        evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gte', value: 10 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gte', value: 10 }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gt', value: 10 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gt', value: 10 }))
+        )
       ).toBe(false);
     });
 
@@ -833,7 +890,9 @@ describe('Session Behavior Evaluators', () => {
 
       const evaluator = evaluatorRegistry.inactive_days;
       expect(
-        evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gte', value: 30 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'inactive_days', operator: 'gte', value: 30 }))
+        )
       ).toBe(true);
     });
   });
@@ -850,22 +909,31 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.source_resolution;
       expect(
-        evaluator(ctx, createCondition({ field: 'source_resolution', operator: 'eq', value: '4K' }))
-      ).toBe(true);
-      expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'source_resolution', operator: 'in', value: ['4K', '1080p'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'source_resolution', operator: 'eq', value: '4K' })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'source_resolution',
-            operator: 'not_in',
-            value: ['720p', '480p'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'source_resolution', operator: 'in', value: ['4K', '1080p'] })
+          )
+        )
+      ).toBe(true);
+      expect(
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'source_resolution',
+              operator: 'not_in',
+              value: ['720p', '480p'],
+            })
+          )
         )
       ).toBe(true);
     });
@@ -879,9 +947,11 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.source_resolution;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'source_resolution', operator: 'eq', value: '1080p' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'source_resolution', operator: 'eq', value: '1080p' })
+          )
         )
       ).toBe(true);
     });
@@ -897,9 +967,11 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.output_resolution;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'output_resolution', operator: 'eq', value: '1080p' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'output_resolution', operator: 'eq', value: '1080p' })
+          )
         )
       ).toBe(true);
     });
@@ -913,23 +985,27 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.output_resolution;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'output_resolution',
-            operator: 'in',
-            value: ['720p', '1080p'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'output_resolution',
+              operator: 'in',
+              value: ['720p', '1080p'],
+            })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'output_resolution',
-            operator: 'not_in',
-            value: ['4K'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'output_resolution',
+              operator: 'not_in',
+              value: ['4K'],
+            })
+          )
         )
       ).toBe(true);
     });
@@ -943,9 +1019,11 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.output_resolution;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'output_resolution', operator: 'eq', value: 'unknown' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'output_resolution', operator: 'eq', value: 'unknown' })
+          )
         )
       ).toBe(true);
     });
@@ -959,9 +1037,11 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.output_resolution;
       // 4K (2160) > 1080p (1080)
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'output_resolution', operator: 'gt', value: '1080p' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'output_resolution', operator: 'gt', value: '1080p' })
+          )
         )
       ).toBe(true);
     });
@@ -978,7 +1058,12 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video' }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video' })
+          )
+        )
       ).toBe(true);
     });
 
@@ -992,7 +1077,12 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video' }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video' })
+          )
+        )
       ).toBe(false);
     });
 
@@ -1006,7 +1096,12 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: 'audio' }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'audio' })
+          )
+        )
       ).toBe(true);
     });
 
@@ -1020,7 +1115,12 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: 'audio' }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'audio' })
+          )
+        )
       ).toBe(false);
     });
 
@@ -1034,9 +1134,11 @@ describe('Stream Quality Evaluators', () => {
         audioDecision: 'copy',
       });
       expect(
-        evaluator(
-          createTestContext({ session: videoOnly }),
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+        matched(
+          evaluator(
+            createTestContext({ session: videoOnly }),
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+          )
         )
       ).toBe(true);
 
@@ -1047,9 +1149,11 @@ describe('Stream Quality Evaluators', () => {
         audioDecision: 'transcode',
       });
       expect(
-        evaluator(
-          createTestContext({ session: audioOnly }),
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+        matched(
+          evaluator(
+            createTestContext({ session: audioOnly }),
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+          )
         )
       ).toBe(true);
 
@@ -1060,9 +1164,11 @@ describe('Stream Quality Evaluators', () => {
         audioDecision: 'transcode',
       });
       expect(
-        evaluator(
-          createTestContext({ session: both }),
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+        matched(
+          evaluator(
+            createTestContext({ session: both }),
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+          )
         )
       ).toBe(true);
     });
@@ -1077,9 +1183,11 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'video_or_audio' })
+          )
         )
       ).toBe(false);
     });
@@ -1094,9 +1202,11 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'neither' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'neither' })
+          )
         )
       ).toBe(true);
     });
@@ -1111,9 +1221,11 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'is_transcoding', operator: 'eq', value: 'neither' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcoding', operator: 'eq', value: 'neither' })
+          )
         )
       ).toBe(false);
     });
@@ -1125,10 +1237,14 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: true }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: true }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: false }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: false }))
+        )
       ).toBe(false);
     });
 
@@ -1142,10 +1258,14 @@ describe('Stream Quality Evaluators', () => {
       const evaluator = evaluatorRegistry.is_transcoding;
 
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: false }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: false }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: true }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'is_transcoding', operator: 'eq', value: true }))
+        )
       ).toBe(false);
     });
   });
@@ -1162,9 +1282,11 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.is_transcode_downgrade;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'is_transcode_downgrade', operator: 'eq', value: true })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcode_downgrade', operator: 'eq', value: true })
+          )
         )
       ).toBe(true);
     });
@@ -1179,9 +1301,11 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.is_transcode_downgrade;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'is_transcode_downgrade', operator: 'eq', value: true })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_transcode_downgrade', operator: 'eq', value: true })
+          )
         )
       ).toBe(false);
     });
@@ -1197,10 +1321,20 @@ describe('Stream Quality Evaluators', () => {
 
       const evaluator = evaluatorRegistry.source_bitrate_mbps;
       expect(
-        evaluator(ctx, createCondition({ field: 'source_bitrate_mbps', operator: 'gt', value: 20 }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'source_bitrate_mbps', operator: 'gt', value: 20 })
+          )
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'source_bitrate_mbps', operator: 'lt', value: 30 }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'source_bitrate_mbps', operator: 'lt', value: 30 })
+          )
+        )
       ).toBe(true);
     });
   });
@@ -1215,18 +1349,24 @@ describe('User Attribute Evaluators', () => {
 
       const evaluator = evaluatorRegistry.user_id;
       expect(
-        evaluator(ctx, createCondition({ field: 'user_id', operator: 'eq', value: 'user-123' }))
-      ).toBe(true);
-      expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'user_id', operator: 'in', value: ['user-123', 'user-456'] })
+        matched(
+          evaluator(ctx, createCondition({ field: 'user_id', operator: 'eq', value: 'user-123' }))
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'user_id', operator: 'not_in', value: ['user-456'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'user_id', operator: 'in', value: ['user-123', 'user-456'] })
+          )
+        )
+      ).toBe(true);
+      expect(
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'user_id', operator: 'not_in', value: ['user-456'] })
+          )
         )
       ).toBe(true);
     });
@@ -1240,10 +1380,14 @@ describe('User Attribute Evaluators', () => {
 
       const evaluator = evaluatorRegistry.trust_score;
       expect(
-        evaluator(ctx, createCondition({ field: 'trust_score', operator: 'lt', value: 80 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'trust_score', operator: 'lt', value: 80 }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'trust_score', operator: 'gte', value: 70 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'trust_score', operator: 'gte', value: 70 }))
+        )
       ).toBe(true);
     });
   });
@@ -1257,10 +1401,14 @@ describe('User Attribute Evaluators', () => {
 
       const evaluator = evaluatorRegistry.account_age_days;
       expect(
-        evaluator(ctx, createCondition({ field: 'account_age_days', operator: 'lt', value: 30 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'account_age_days', operator: 'lt', value: 30 }))
+        )
       ).toBe(true);
       expect(
-        evaluator(ctx, createCondition({ field: 'account_age_days', operator: 'gte', value: 7 }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'account_age_days', operator: 'gte', value: 7 }))
+        )
       ).toBe(true);
     });
   });
@@ -1274,12 +1422,16 @@ describe('Device/Client Evaluators', () => {
 
       const evaluator = evaluatorRegistry.device_type;
       expect(
-        evaluator(ctx, createCondition({ field: 'device_type', operator: 'eq', value: 'mobile' }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'device_type', operator: 'eq', value: 'mobile' }))
+        )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'device_type', operator: 'not_in', value: ['tv', 'desktop'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'device_type', operator: 'not_in', value: ['tv', 'desktop'] })
+          )
         )
       ).toBe(true);
     });
@@ -1292,15 +1444,19 @@ describe('Device/Client Evaluators', () => {
 
       const evaluator = evaluatorRegistry.client_name;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'client_name', operator: 'contains', value: 'Plex' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'client_name', operator: 'contains', value: 'Plex' })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'client_name', operator: 'eq', value: 'Plex for iOS' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'client_name', operator: 'eq', value: 'Plex for iOS' })
+          )
         )
       ).toBe(true);
     });
@@ -1313,12 +1469,16 @@ describe('Device/Client Evaluators', () => {
 
       const evaluator = evaluatorRegistry.platform;
       expect(
-        evaluator(ctx, createCondition({ field: 'platform', operator: 'eq', value: 'ios' }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'platform', operator: 'eq', value: 'ios' }))
+        )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'platform', operator: 'in', value: ['ios', 'android'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'platform', operator: 'in', value: ['ios', 'android'] })
+          )
         )
       ).toBe(true);
     });
@@ -1329,7 +1489,9 @@ describe('Device/Client Evaluators', () => {
 
       const evaluator = evaluatorRegistry.platform;
       expect(
-        evaluator(ctx, createCondition({ field: 'platform', operator: 'eq', value: 'unknown' }))
+        matched(
+          evaluator(ctx, createCondition({ field: 'platform', operator: 'eq', value: 'unknown' }))
+        )
       ).toBe(true);
     });
   });
@@ -1343,7 +1505,12 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.is_local_network;
       expect(
-        evaluator(ctx, createCondition({ field: 'is_local_network', operator: 'eq', value: true }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_local_network', operator: 'eq', value: true })
+          )
+        )
       ).toBe(true);
     });
 
@@ -1353,7 +1520,12 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.is_local_network;
       expect(
-        evaluator(ctx, createCondition({ field: 'is_local_network', operator: 'eq', value: false }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'is_local_network', operator: 'eq', value: false })
+          )
+        )
       ).toBe(true);
     });
   });
@@ -1365,18 +1537,22 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.country;
       expect(
-        evaluator(ctx, createCondition({ field: 'country', operator: 'eq', value: 'US' }))
+        matched(evaluator(ctx, createCondition({ field: 'country', operator: 'eq', value: 'US' })))
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'country', operator: 'in', value: ['US', 'CA', 'UK'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'country', operator: 'in', value: ['US', 'CA', 'UK'] })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'country', operator: 'not_in', value: ['CN', 'RU'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'country', operator: 'not_in', value: ['CN', 'RU'] })
+          )
         )
       ).toBe(true);
     });
@@ -1389,9 +1565,11 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'in', value: ['192.168.0.0/16'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'in', value: ['192.168.0.0/16'] })
+          )
         )
       ).toBe(true);
     });
@@ -1402,13 +1580,15 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'ip_in_range',
-            operator: 'in',
-            value: ['192.168.0.0/16', '10.0.0.0/8'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'ip_in_range',
+              operator: 'in',
+              value: ['192.168.0.0/16', '10.0.0.0/8'],
+            })
+          )
         )
       ).toBe(true);
     });
@@ -1419,9 +1599,11 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'in', value: ['192.168.0.0/16'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'in', value: ['192.168.0.0/16'] })
+          )
         )
       ).toBe(false);
     });
@@ -1432,13 +1614,15 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'ip_in_range',
-            operator: 'not_in',
-            value: ['192.168.0.0/16', '10.0.0.0/8'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'ip_in_range',
+              operator: 'not_in',
+              value: ['192.168.0.0/16', '10.0.0.0/8'],
+            })
+          )
         )
       ).toBe(true);
     });
@@ -1449,9 +1633,11 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'eq', value: '172.16.0.0/12' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'eq', value: '172.16.0.0/12' })
+          )
         )
       ).toBe(true);
     });
@@ -1462,15 +1648,19 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'eq', value: '192.168.1.1/32' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'eq', value: '192.168.1.1/32' })
+          )
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'eq', value: '192.168.1.2/32' })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'eq', value: '192.168.1.2/32' })
+          )
         )
       ).toBe(false);
     });
@@ -1481,9 +1671,11 @@ describe('Network/Location Evaluators', () => {
 
       const evaluator = evaluatorRegistry.ip_in_range;
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'ip_in_range', operator: 'in', value: ['0.0.0.0/0'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'ip_in_range', operator: 'in', value: ['0.0.0.0/0'] })
+          )
         )
       ).toBe(false);
     });
@@ -1498,16 +1690,23 @@ describe('Scope Evaluators', () => {
 
       const evaluator = evaluatorRegistry.server_id;
       expect(
-        evaluator(ctx, createCondition({ field: 'server_id', operator: 'eq', value: 'server-abc' }))
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'server_id', operator: 'eq', value: 'server-abc' })
+          )
+        )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({
-            field: 'server_id',
-            operator: 'in',
-            value: ['server-abc', 'server-def'],
-          })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({
+              field: 'server_id',
+              operator: 'in',
+              value: ['server-abc', 'server-def'],
+            })
+          )
         )
       ).toBe(true);
     });
@@ -1520,18 +1719,24 @@ describe('Scope Evaluators', () => {
 
       const evaluator = evaluatorRegistry.media_type;
       expect(
-        evaluator(ctx, createCondition({ field: 'media_type', operator: 'eq', value: 'movie' }))
-      ).toBe(true);
-      expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'media_type', operator: 'in', value: ['movie', 'episode'] })
+        matched(
+          evaluator(ctx, createCondition({ field: 'media_type', operator: 'eq', value: 'movie' }))
         )
       ).toBe(true);
       expect(
-        evaluator(
-          ctx,
-          createCondition({ field: 'media_type', operator: 'not_in', value: ['track'] })
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'media_type', operator: 'in', value: ['movie', 'episode'] })
+          )
+        )
+      ).toBe(true);
+      expect(
+        matched(
+          evaluator(
+            ctx,
+            createCondition({ field: 'media_type', operator: 'not_in', value: ['track'] })
+          )
         )
       ).toBe(true);
     });

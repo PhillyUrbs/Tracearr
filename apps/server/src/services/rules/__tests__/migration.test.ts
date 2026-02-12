@@ -67,8 +67,8 @@ describe('Rule Migration', () => {
           operator: 'gt',
           value: 3,
         });
-        expect(result?.actions.actions).toHaveLength(1);
-        expect(result?.actions.actions[0]?.type).toBe('create_violation');
+        expect(result?.actions.actions).toEqual([]);
+        expect(result?.severity).toBe('warning');
       });
 
       it('adds is_local_network condition as separate AND group when excludePrivateIps is true', () => {

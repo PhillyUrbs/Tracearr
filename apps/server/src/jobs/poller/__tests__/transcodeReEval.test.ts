@@ -227,6 +227,7 @@ function createTranscodeRule(overrides: Partial<RuleV2> = {}): RuleV2 {
     name: 'Block 4K Transcoding',
     description: null,
     serverId: null,
+    severity: 'high',
     isActive: true,
     conditions: {
       groups: [
@@ -235,7 +236,7 @@ function createTranscodeRule(overrides: Partial<RuleV2> = {}): RuleV2 {
       ],
     },
     actions: {
-      actions: [{ type: 'create_violation', severity: 'high' }, { type: 'kill_stream' }],
+      actions: [{ type: 'kill_stream' }],
     },
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -249,12 +250,13 @@ function createConcurrentStreamsRule(overrides: Partial<RuleV2> = {}): RuleV2 {
     name: 'Max 2 Concurrent Streams',
     description: null,
     serverId: null,
+    severity: 'warning',
     isActive: true,
     conditions: {
       groups: [{ conditions: [{ field: 'concurrent_streams', operator: 'gt', value: 2 }] }],
     },
     actions: {
-      actions: [{ type: 'create_violation', severity: 'warning' }],
+      actions: [],
     },
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -410,7 +412,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }, { type: 'kill_stream' }],
+          actions: [{ type: 'kill_stream' }],
         },
       ]);
 
@@ -434,7 +436,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }],
+          actions: [],
         },
       ]);
 
@@ -445,26 +447,6 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
       const insertValues = mockValues.mock.calls[0]?.[0] as Record<string, unknown>;
       const data = insertValues?.data as Record<string, unknown>;
       expect(data?.transcodeReEval).toBe(true);
-    });
-
-    it('returns empty results when rule matches but no create_violation action', async () => {
-      const reEvaluateRulesOnTranscodeChange = await getFunction();
-
-      mockEvaluateRulesAsync.mockResolvedValue([
-        {
-          ruleId: 'rule-transcode-1',
-          ruleName: 'Block 4K Transcoding',
-          matched: true,
-          matchedGroups: [0],
-          actions: [{ type: 'kill_stream' }], // No create_violation
-        },
-      ]);
-
-      const input = createDefaultInput();
-      const results = await reEvaluateRulesOnTranscodeChange(input);
-
-      expect(results).toHaveLength(0);
-      expect(mockTxInsert).not.toHaveBeenCalled();
     });
   });
 
@@ -478,7 +460,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }],
+          actions: [],
         },
       ]);
 
@@ -504,7 +486,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }],
+          actions: [],
         },
       ]);
 
@@ -532,7 +514,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }],
+          actions: [],
         },
       ]);
 
@@ -554,26 +536,6 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
       expect(selectOrder).toBeLessThan(insertOrder);
       expect(insertOrder).toBeLessThan(updateOrder);
     });
-
-    it('does not use transaction when no create_violation action exists', async () => {
-      const reEvaluateRulesOnTranscodeChange = await getFunction();
-
-      mockEvaluateRulesAsync.mockResolvedValue([
-        {
-          ruleId: 'rule-transcode-1',
-          ruleName: 'Block 4K Transcoding',
-          matched: true,
-          matchedGroups: [0],
-          actions: [{ type: 'kill_stream' }], // No violation action
-        },
-      ]);
-
-      const input = createDefaultInput();
-      await reEvaluateRulesOnTranscodeChange(input);
-
-      // No transaction needed when there's no violation to create
-      expect(mockTransaction).not.toHaveBeenCalled();
-    });
   });
 
   describe('trust score penalty', () => {
@@ -586,7 +548,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }],
+          actions: [],
         },
       ]);
 
@@ -608,7 +570,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
           ruleName: 'Block 4K Transcoding',
           matched: true,
           matchedGroups: [0, 1],
-          actions: [{ type: 'create_violation', severity: 'high' }, { type: 'kill_stream' }],
+          actions: [{ type: 'kill_stream' }],
         },
       ]);
 
@@ -617,7 +579,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
       const input = createDefaultInput();
       await reEvaluateRulesOnTranscodeChange(input);
 
-      // Should execute side effect actions (kill_stream) but not create_violation
+      // Should execute side effect actions (kill_stream)
       expect(mockExecuteActions).toHaveBeenCalledTimes(1);
       const [_ctx, actions] = mockExecuteActions.mock.calls[0] as [unknown, { type: string }[]];
       expect(actions).toHaveLength(1);
@@ -627,31 +589,6 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
       expect(mockStoreActionResults).toHaveBeenCalledWith('violation-1', 'rule-transcode-1', [
         { action: 'kill_stream', success: true },
       ]);
-    });
-
-    it('executes side effect actions even without create_violation', async () => {
-      const reEvaluateRulesOnTranscodeChange = await getFunction();
-
-      mockEvaluateRulesAsync.mockResolvedValue([
-        {
-          ruleId: 'rule-transcode-1',
-          ruleName: 'Block 4K Transcoding',
-          matched: true,
-          matchedGroups: [0],
-          actions: [{ type: 'kill_stream' }], // Only kill, no violation
-        },
-      ]);
-
-      const input = createDefaultInput();
-      await reEvaluateRulesOnTranscodeChange(input);
-
-      // Should still execute the kill_stream action
-      expect(mockExecuteActions).toHaveBeenCalledTimes(1);
-      expect(mockStoreActionResults).toHaveBeenCalledWith(
-        null, // No violation ID
-        'rule-transcode-1',
-        expect.any(Array)
-      );
     });
   });
 
@@ -710,6 +647,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
             name: 'Geo Restriction',
             description: null,
             serverId: null,
+            severity: 'warning',
             isActive: true,
             conditions: {
               groups: [
@@ -718,7 +656,7 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
                 },
               ],
             },
-            actions: { actions: [{ type: 'create_violation', severity: 'warning' }] },
+            actions: { actions: [] },
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -743,11 +681,12 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
         name: 'Block Low Resolution Output',
         description: null,
         serverId: null,
+        severity: 'warning',
         isActive: true,
         conditions: {
           groups: [{ conditions: [{ field: 'output_resolution', operator: 'eq', value: '480p' }] }],
         },
-        actions: { actions: [{ type: 'create_violation', severity: 'warning' }] },
+        actions: { actions: [] },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -773,13 +712,14 @@ describe('reEvaluateRulesOnTranscodeChange', () => {
         name: 'Detect Transcode Downgrade',
         description: null,
         serverId: null,
+        severity: 'warning',
         isActive: true,
         conditions: {
           groups: [
             { conditions: [{ field: 'is_transcode_downgrade', operator: 'eq', value: true }] },
           ],
         },
-        actions: { actions: [{ type: 'create_violation', severity: 'warning' }] },
+        actions: { actions: [] },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
