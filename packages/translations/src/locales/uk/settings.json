@@ -13,33 +13,33 @@
     "title": "Загальні налаштування",
     "unitSystem": "Система одиниць",
     "metric": "Метрична (км, км/год)",
-    "imperial": "Imperial (mi, mph)",
-    "timezone": "Timezone",
-    "primaryAuth": "Primary Authentication Method",
-    "localAccount": "Local Account",
-    "plexAccount": "Plex Account",
-    "jellyfinAccount": "Jellyfin Account"
+    "imperial": "Імперська (милі, миль/год)",
+    "timezone": "Часовий пояс",
+    "primaryAuth": "Основний метод автентифікації",
+    "localAccount": "Локальний обліковий запис",
+    "plexAccount": "Обліковий запис Plex",
+    "jellyfinAccount": "Обліковий запис Jellyfin"
   },
   "servers": {
-    "title": "Connected Servers",
-    "addServer": "Add Server",
-    "serverName": "Server Name",
-    "serverUrl": "Server URL",
-    "apiKey": "API Key",
+    "title": "Підключені сервери",
+    "addServer": "Додати сервер",
+    "serverName": "Назва сервера",
+    "serverUrl": "URL-адреса сервера",
+    "apiKey": "Ключ API",
     "syncInterval": "Sync Interval",
-    "testConnection": "Test Connection",
-    "connectionSuccess": "Connection successful",
-    "connectionFailed": "Connection failed"
+    "testConnection": "Перевірити підключення",
+    "connectionSuccess": "Підключення успішне",
+    "connectionFailed": "Не вдалося підключитися"
   },
   "mobile": {
-    "title": "Mobile App",
+    "title": "Мобільний додаток",
     "pairDevice": "Pair Device",
-    "connectedDevices": "Connected Devices",
+    "connectedDevices": "Підключені пристрої",
     "generateToken": "Generate Pair Token",
     "scanQrCode": "Scan QR Code",
     "tokenExpires": "Token expires in {{time}}",
-    "noDevices": "No devices connected",
-    "revokeAll": "Revoke All Sessions"
+    "noDevices": "Немає підключених пристроїв",
+    "revokeAll": "Скасувати всі сеанси"
   },
   "webhooks": {
     "title": "Webhook Configuration",
@@ -58,9 +58,9 @@
     "connectionScenarios": "Connection Scenarios"
   },
   "import": {
-    "title": "Import Data",
-    "jellystat": "Import from Jellystat",
-    "tautulli": "Import from Tautulli",
+    "title": "Імпорт даних",
+    "jellystat": "Імпортувати з Jellystat",
+    "tautulli": "Імпортувати з Tautulli",
     "importProgress": "Import Progress",
     "importComplete": "Import Complete",
     "importFailed": "Import Failed",
@@ -101,13 +101,13 @@
     "releaseNotes": "Release Notes",
     "updateCommand": "Update Command",
     "pullInstructions": "After pulling, restart your container to apply the update.",
-    "stableRelease": "Stable Release",
-    "betaUpdate": "Beta Update",
-    "newVersion": "New Version",
+    "stableRelease": "Стабільна версія",
+    "betaUpdate": "Бета-оновлення",
+    "newVersion": "Нова версія",
     "versionAvailable": "{{version}} available"
   },
   "serverHealth": {
-    "unreachable": "{{serverName}} is unreachable",
+    "unreachable": "{{serverName}} недоступний",
     "multipleUnreachable": "{{count}} servers unreachable: {{serverNames}}"
   },
   "ipWarning": {
