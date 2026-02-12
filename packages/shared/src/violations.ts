@@ -1,5 +1,51 @@
-import type { ViolationWithDetails, ViolationSessionInfo, UnitSystem } from './types.js';
+import type {
+  ViolationWithDetails,
+  ViolationSessionInfo,
+  UnitSystem,
+  GroupEvidence,
+  ConditionEvidence,
+  ConditionField,
+} from './types.js';
 import { formatSpeed, formatDistance } from './constants.js';
+
+const CONDITION_FIELD_LABELS: Record<ConditionField, string> = {
+  concurrent_streams: 'Concurrent Streams',
+  active_session_distance_km: 'Session Distance',
+  travel_speed_kmh: 'Travel Speed',
+  unique_ips_in_window: 'Unique IPs',
+  unique_devices_in_window: 'Unique Devices',
+  inactive_days: 'Inactive Days',
+  source_resolution: 'Source Resolution',
+  output_resolution: 'Output Resolution',
+  is_transcoding: 'Transcoding',
+  is_transcode_downgrade: 'Transcode Downgrade',
+  source_bitrate_mbps: 'Source Bitrate',
+  user_id: 'User',
+  trust_score: 'Trust Score',
+  account_age_days: 'Account Age',
+  device_type: 'Device Type',
+  client_name: 'Client',
+  platform: 'Platform',
+  is_local_network: 'Local Network',
+  country: 'Country',
+  ip_in_range: 'IP Range',
+  server_id: 'Server',
+  library_id: 'Library',
+  media_type: 'Media Type',
+};
+
+const OPERATOR_LABELS: Record<string, string> = {
+  eq: '=',
+  neq: '!=',
+  gt: '>',
+  gte: '>=',
+  lt: '<',
+  lte: '<=',
+  in: 'in',
+  not_in: 'not in',
+  contains: 'contains',
+  not_contains: 'does not contain',
+};
 
 /**
  * Collect all sessions from a violation (triggering + related), deduped by ID.
@@ -37,8 +83,11 @@ export function getViolationDescription(
   const data = violation.data;
   const ruleType = violation.rule?.type;
 
-  // V2 custom rules don't have a type — check for custom message in data
+  // V2 custom rules don't have a type — check for evidence or custom message in data
   if (!ruleType) {
+    if (violation.evidence) {
+      return formatEvidenceDescription(violation.evidence, unitSystem);
+    }
     if (data?.message && typeof data.message === 'string') {
       return data.message;
     }
@@ -143,7 +192,14 @@ export function getViolationDetails(
   const data = violation.data;
   const ruleType = violation.rule?.type;
 
-  if (!data || !ruleType) {
+  if (!ruleType) {
+    if (violation.evidence) {
+      return formatEvidenceDetails(violation.evidence, unitSystem);
+    }
+    return {};
+  }
+
+  if (!data) {
     return {};
   }
 
@@ -229,3 +285,106 @@ export function getViolationDetails(
 
   return details;
 }
+
+/**
+ * Format a single condition's actual value into a human-readable string.
+ */
+function formatConditionActual(condition: ConditionEvidence, unitSystem: UnitSystem): string {
+  const { field, actual } = condition;
+
+  if (actual === null || actual === undefined) return 'unknown';
+
+  switch (field) {
+    case 'travel_speed_kmh':
+      return typeof actual === 'number' ? formatSpeed(actual, unitSystem) : String(actual);
+    case 'active_session_distance_km':
+      return typeof actual === 'number' ? formatDistance(actual, unitSystem) : String(actual);
+    case 'source_bitrate_mbps':
+      return typeof actual === 'number' ? `${actual} Mbps` : String(actual);
+    case 'inactive_days':
+    case 'account_age_days':
+      return typeof actual === 'number' ? `${actual} days` : String(actual);
+    default:
+      return String(actual);
+  }
+}
+
+/**
+ * Build a human-readable description from evidence groups.
+ * Shows only matched conditions for a concise summary.
+ */
+export function formatEvidenceDescription(
+  evidence: GroupEvidence[],
+  unitSystem: UnitSystem = 'metric'
+): string {
+  const parts: string[] = [];
+
+  for (const group of evidence) {
+    const matched = group.conditions.filter((c) => c.matched);
+    for (const cond of matched) {
+      const label = CONDITION_FIELD_LABELS[cond.field] ?? cond.field;
+      const actual = formatConditionActual(cond, unitSystem);
+      const op = OPERATOR_LABELS[cond.operator] ?? cond.operator;
+      const threshold = String(cond.threshold);
+      parts.push(`${label}: ${actual} (${op} ${threshold})`);
+    }
+  }
+
+  return parts.length > 0 ? parts.join(', ') : 'Rule conditions matched';
+}
+
+/**
+ * Build detailed key-value pairs from evidence for the details panel.
+ */
+export function formatEvidenceDetails(
+  evidence: GroupEvidence[],
+  unitSystem: UnitSystem = 'metric'
+): Record<string, unknown> {
+  const details: Record<string, unknown> = {};
+
+  for (const group of evidence) {
+    for (const cond of group.conditions) {
+      const label = CONDITION_FIELD_LABELS[cond.field] ?? cond.field;
+      const actual = formatConditionActual(cond, unitSystem);
+      const op = OPERATOR_LABELS[cond.operator] ?? cond.operator;
+
+      details[label] = {
+        actual,
+        threshold: `${op} ${cond.threshold}`,
+        matched: cond.matched,
+      };
+
+      // Add field-specific details
+      if (cond.field === 'travel_speed_kmh' && cond.details) {
+        if (typeof cond.details.distance === 'number') {
+          details['Travel Distance'] = formatDistance(cond.details.distance, unitSystem);
+        }
+        if (cond.details.previousLocation) {
+          details['Previous Location'] = formatLocationValue(cond.details.previousLocation);
+        }
+        if (cond.details.currentLocation) {
+          details['Current Location'] = formatLocationValue(cond.details.currentLocation);
+        }
+      }
+      if (cond.field === 'unique_ips_in_window' && cond.details) {
+        if (Array.isArray(cond.details.ips)) {
+          details['IP Addresses'] = cond.details.ips;
+        }
+      }
+      if (cond.field === 'unique_devices_in_window' && cond.details) {
+        if (Array.isArray(cond.details.devices)) {
+          details['Devices'] = cond.details.devices;
+        }
+      }
+      if (cond.field === 'inactive_days' && cond.details?.lastActivityAt) {
+        details['Last Activity'] = new Date(
+          cond.details.lastActivityAt as string
+        ).toLocaleDateString();
+      }
+    }
+  }
+
+  return details;
+}
+
+export { CONDITION_FIELD_LABELS, OPERATOR_LABELS };

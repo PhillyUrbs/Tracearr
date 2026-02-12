@@ -416,6 +416,7 @@ export interface Rule {
   params: RuleParams | null;
   // V2 fields (nullable for V1 rules)
   description?: string | null;
+  severity?: ViolationSeverity;
   conditions?: RuleConditions | null;
   actions?: RuleActions | null;
   serverId?: string | null;
@@ -496,6 +497,23 @@ export type MediaTypeEnum = 'movie' | 'episode' | 'track' | 'photo' | 'live' | '
 // Condition value types
 export type ConditionValue = string | number | boolean | string[] | number[];
 
+// Evidence types for violation diagnostics
+export interface ConditionEvidence {
+  field: ConditionField;
+  operator: Operator;
+  threshold: ConditionValue;
+  actual: unknown;
+  matched: boolean;
+  relatedSessionIds?: string[];
+  details?: Record<string, unknown>;
+}
+
+export interface GroupEvidence {
+  groupIndex: number;
+  matched: boolean;
+  conditions: ConditionEvidence[];
+}
+
 // Single condition
 export interface Condition {
   field: ConditionField;
@@ -522,7 +540,6 @@ export interface RuleConditions {
 
 // Action types
 export type ActionType =
-  | 'create_violation'
   | 'log_only'
   | 'notify'
   | 'adjust_trust'
@@ -535,12 +552,6 @@ export type ActionType =
 export type NotificationChannelV2 = 'push' | 'discord' | 'email' | 'webhook';
 
 // Action definitions
-export interface CreateViolationAction {
-  type: 'create_violation';
-  severity: ViolationSeverity;
-  cooldown_minutes?: number;
-}
-
 export interface LogOnlyAction {
   type: 'log_only';
   message?: string;
@@ -583,7 +594,6 @@ export interface MessageClientAction {
 }
 
 export type Action =
-  | CreateViolationAction
   | LogOnlyAction
   | NotifyAction
   | AdjustTrustAction
@@ -604,6 +614,7 @@ export interface RuleV2 {
   description: string | null;
   serverId: string | null;
   isActive: boolean;
+  severity: ViolationSeverity;
   conditions: RuleConditions;
   actions: RuleActions;
   createdAt: Date;
@@ -676,6 +687,8 @@ export interface ViolationWithDetails extends Violation {
   };
   /** Action results from V2 rule execution */
   actionResults?: ActionResult[];
+  /** Condition evidence from V2 rule evaluation */
+  evidence?: GroupEvidence[];
 }
 
 // Stats types

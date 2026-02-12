@@ -52,7 +52,6 @@ export type {
   RuleConditions,
   ActionType,
   Action,
-  CreateViolationAction,
   LogOnlyAction,
   NotifyAction,
   AdjustTrustAction,
@@ -74,6 +73,9 @@ export type {
   Violation,
   ViolationWithDetails,
   ViolationSessionInfo,
+  // Evidence
+  ConditionEvidence,
+  GroupEvidence,
   // Stats
   DashboardStats,
   PlayStats,
@@ -439,4 +441,8 @@ export {
   collectViolationSessions,
   getViolationDescription,
   getViolationDetails,
+  formatEvidenceDescription,
+  formatEvidenceDetails,
+  CONDITION_FIELD_LABELS,
+  OPERATOR_LABELS,
 } from './violations.js';

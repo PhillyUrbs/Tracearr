@@ -425,7 +425,6 @@ export const ruleConditionsSchema = z.object({
 
 // Action types
 export const actionTypeSchema = z.enum([
-  'create_violation',
   'log_only',
   'notify',
   'adjust_trust',
@@ -438,12 +437,6 @@ export const actionTypeSchema = z.enum([
 export const notificationChannelV2Schema = z.enum(['push', 'discord', 'email', 'webhook']);
 
 // Individual action schemas
-export const createViolationActionSchema = z.object({
-  type: z.literal('create_violation'),
-  severity: z.enum(['low', 'warning', 'high']),
-  cooldown_minutes: z.number().int().nonnegative().optional(),
-});
-
 export const logOnlyActionSchema = z.object({
   type: z.literal('log_only'),
   message: z.string().max(500).optional(),
@@ -497,7 +490,6 @@ export const messageClientActionSchema = z.object({
 
 // Union of all actions
 export const actionSchema = z.discriminatedUnion('type', [
-  createViolationActionSchema,
   logOnlyActionSchema,
   notifyActionSchema,
   adjustTrustActionSchema,
@@ -507,10 +499,12 @@ export const actionSchema = z.discriminatedUnion('type', [
   messageClientActionSchema,
 ]);
 
-// Rule actions container
+// Rule actions container (actions are optional side-effects; violations are always auto-created)
 export const ruleActionsSchema = z.object({
-  actions: z.array(actionSchema).min(1),
+  actions: z.array(actionSchema),
 });
+
+export const violationSeveritySchema = z.enum(['low', 'warning', 'high']);
 
 // Create rule V2 schema
 export const createRuleV2Schema = z.object({
@@ -518,6 +512,7 @@ export const createRuleV2Schema = z.object({
   description: z.string().max(500).nullable().optional(),
   serverId: uuidSchema.nullable().optional(),
   isActive: z.boolean().default(true),
+  severity: violationSeveritySchema.default('warning'),
   conditions: ruleConditionsSchema,
   actions: ruleActionsSchema,
 });
@@ -527,6 +522,7 @@ export const updateRuleV2Schema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
   isActive: z.boolean().optional(),
+  severity: violationSeveritySchema.optional(),
   conditions: ruleConditionsSchema.optional(),
   actions: ruleActionsSchema.optional(),
 });
@@ -1050,7 +1046,6 @@ export type ConditionGroup = z.infer<typeof conditionGroupSchema>;
 export type RuleConditions = z.infer<typeof ruleConditionsSchema>;
 export type ActionType = z.infer<typeof actionTypeSchema>;
 export type NotificationChannelV2 = z.infer<typeof notificationChannelV2Schema>;
-export type CreateViolationAction = z.infer<typeof createViolationActionSchema>;
 export type LogOnlyAction = z.infer<typeof logOnlyActionSchema>;
 export type NotifyAction = z.infer<typeof notifyActionSchema>;
 export type AdjustTrustAction = z.infer<typeof adjustTrustActionSchema>;
