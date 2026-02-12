@@ -384,6 +384,7 @@ export const rules = pgTable(
     // New V2 columns
     conditions: jsonb('conditions').$type<RuleConditions>(),
     actions: jsonb('actions').$type<RuleActions>(),
+    severity: varchar('severity', { length: 20 }).notNull().default('warning'),
     // Scope
     serverId: uuid('server_id').references(() => servers.id, { onDelete: 'cascade' }),
     serverUserId: uuid('server_user_id').references(() => serverUsers.id, { onDelete: 'cascade' }),

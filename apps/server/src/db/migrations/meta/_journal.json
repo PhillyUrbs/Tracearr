@@ -351,6 +351,13 @@
       "when": 1770844323858,
       "tag": "0049_fix_engagement_play_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1770852632847,
+      "tag": "0050_add_severity_to_rules",
+      "breakpoints": true
     }
   ]
 }
