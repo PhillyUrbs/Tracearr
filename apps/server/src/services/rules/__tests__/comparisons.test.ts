@@ -83,8 +83,9 @@ describe('compare', () => {
       expect(compare('UK', 'in', ['US', 'CA', 'MX'])).toBe(false);
     });
 
-    it('returns false when expected is not an array', () => {
-      expect(compare('US', 'in', 'US')).toBe(false);
+    it('falls back to eq when expected is not an array', () => {
+      expect(compare('US', 'in', 'US')).toBe(true);
+      expect(compare('UK', 'in', 'US')).toBe(false);
     });
   });
 
@@ -95,6 +96,11 @@ describe('compare', () => {
 
     it('returns false when value is in array', () => {
       expect(compare('US', 'not_in', ['US', 'CA', 'MX'])).toBe(false);
+    });
+
+    it('falls back to neq when expected is not an array', () => {
+      expect(compare('US', 'not_in', 'US')).toBe(false);
+      expect(compare('UK', 'not_in', 'US')).toBe(true);
     });
   });
 

@@ -398,6 +398,122 @@ describe('evaluateRule', () => {
       expect(evaluateRule(adminCtx).matched).toBe(false);
     });
 
+    it('4K transcoding rule with user exclusion (issue #382 reproduction)', () => {
+      const excludedUserId = 'owner-uuid-123';
+      const rule = createMockRule({
+        conditions: {
+          groups: [
+            // Group 1: is transcoding video
+            { conditions: [{ field: 'is_transcoding', operator: 'eq', value: 'video' }] },
+            // Group 2: source resolution is 4K
+            { conditions: [{ field: 'source_resolution', operator: 'eq', value: '4K' }] },
+            // Group 3: user is NOT the excluded user
+            {
+              conditions: [{ field: 'user_id', operator: 'not_in', value: [excludedUserId] }],
+            },
+          ],
+        },
+        actions: {
+          actions: [{ type: 'kill_stream', target: 'triggering', message: 'No 4K transcoding' }],
+        },
+      });
+
+      // Non-excluded user transcoding 4K → should trigger
+      const otherUserCtx = createTestContext(rule, {
+        session: createMockSession({
+          isTranscode: true,
+          videoDecision: 'transcode',
+          sourceVideoWidth: 3840,
+          sourceVideoHeight: 2160,
+        }),
+        serverUser: createMockServerUser({ id: 'other-user-456' }),
+      });
+
+      const otherResult = evaluateRule(otherUserCtx);
+      expect(otherResult.matched).toBe(true);
+      expect(otherResult.matchedGroups).toEqual([0, 1, 2]);
+
+      // Verify evidence for matching rule shows all 3 groups matched
+      expect(otherResult.evidence).toHaveLength(3);
+      expect(otherResult.evidence![0]!.matched).toBe(true);
+      expect(otherResult.evidence![1]!.matched).toBe(true);
+      expect(otherResult.evidence![2]!.matched).toBe(true);
+
+      // Excluded user transcoding 4K → should NOT trigger
+      const excludedCtx = createTestContext(rule, {
+        session: createMockSession({
+          isTranscode: true,
+          videoDecision: 'transcode',
+          sourceVideoWidth: 3840,
+          sourceVideoHeight: 2160,
+        }),
+        serverUser: createMockServerUser({ id: excludedUserId }),
+      });
+
+      const excludedResult = evaluateRule(excludedCtx);
+      expect(excludedResult.matched).toBe(false);
+      // Evidence is only returned for matching rules (by design in evaluateRule)
+      expect(excludedResult.evidence).toBeUndefined();
+
+      // Excluded user NOT transcoding → should NOT trigger (group 1 fails)
+      const excludedDirectPlayCtx = createTestContext(rule, {
+        session: createMockSession({
+          isTranscode: false,
+          videoDecision: 'directplay',
+          sourceVideoWidth: 3840,
+          sourceVideoHeight: 2160,
+        }),
+        serverUser: createMockServerUser({ id: excludedUserId }),
+      });
+
+      expect(evaluateRule(excludedDirectPlayCtx).matched).toBe(false);
+
+      // Non-excluded user direct-playing 4K → should NOT trigger (group 1 fails)
+      const otherDirectPlayCtx = createTestContext(rule, {
+        session: createMockSession({
+          isTranscode: false,
+          videoDecision: 'directplay',
+          sourceVideoWidth: 3840,
+          sourceVideoHeight: 2160,
+        }),
+        serverUser: createMockServerUser({ id: 'other-user-456' }),
+      });
+
+      expect(evaluateRule(otherDirectPlayCtx).matched).toBe(false);
+    });
+
+    it('not_in with non-array value falls back to neq (defensive)', () => {
+      const excludedUserId = 'owner-uuid-123';
+      const rule = createMockRule({
+        conditions: {
+          groups: [
+            {
+              conditions: [
+                // Value stored as string instead of array (data corruption scenario)
+                {
+                  field: 'user_id',
+                  operator: 'not_in',
+                  value: excludedUserId as unknown as string[],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      // Excluded user → condition should NOT match (defensive fallback to neq)
+      const excludedCtx = createTestContext(rule, {
+        serverUser: createMockServerUser({ id: excludedUserId }),
+      });
+      expect(evaluateRule(excludedCtx).matched).toBe(false);
+
+      // Other user → condition SHOULD match
+      const otherCtx = createTestContext(rule, {
+        serverUser: createMockServerUser({ id: 'other-user-456' }),
+      });
+      expect(evaluateRule(otherCtx).matched).toBe(true);
+    });
+
     it('mobile bypass works (device NOT IN [mobile])', () => {
       const rule = createMockRule({
         conditions: {

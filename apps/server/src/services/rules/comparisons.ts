@@ -21,11 +21,17 @@ export function compare(actual: unknown, operator: Operator, expected: Condition
       return typeof actual === 'number' && typeof expected === 'number' && actual <= expected;
 
     case 'in':
-      if (!Array.isArray(expected)) return false;
+      if (!Array.isArray(expected)) {
+        // Fallback: single value treated as eq
+        return actual === expected;
+      }
       return (expected as (string | number)[]).includes(actual as string | number);
 
     case 'not_in':
-      if (!Array.isArray(expected)) return true;
+      if (!Array.isArray(expected)) {
+        // Fallback: single value treated as neq
+        return actual !== expected;
+      }
       return !(expected as (string | number)[]).includes(actual as string | number);
 
     case 'contains':
