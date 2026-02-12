@@ -614,13 +614,20 @@ export async function createSessionWithRulesAtomic(
             const rule = activeRulesV2.find((r) => r.id === result.ruleId);
             if (!rule) continue;
 
-            // Check for create_violation action
-            const violationAction = result.actions.find((a) => a.type === 'create_violation');
-
-            if (violationAction?.type === 'create_violation') {
-              // Create violation within transaction for atomicity
-              const severity = violationAction.severity;
+            // Every rule match auto-creates a violation. Severity from rule.
+            {
+              const severity = rule.severity ?? 'warning';
               const trustPenalty = getTrustScorePenalty(severity);
+
+              // Collect related session IDs from evidence
+              const allRelatedSessionIds = new Set<string>();
+              for (const group of result.evidence ?? []) {
+                for (const cond of group.conditions) {
+                  for (const id of cond.relatedSessionIds ?? []) {
+                    allRelatedSessionIds.add(id);
+                  }
+                }
+              }
 
               // Insert violation
               const insertedViolations = await tx
@@ -632,6 +639,8 @@ export async function createSessionWithRulesAtomic(
                   severity,
                   ruleType: null, // V2 rules don't have a type field
                   data: {
+                    evidence: result.evidence,
+                    relatedSessionIds: Array.from(allRelatedSessionIds),
                     ruleName: rule.name,
                     matchedGroups: result.matchedGroups,
                     sessionKey: session.sessionKey,
@@ -669,12 +678,11 @@ export async function createSessionWithRulesAtomic(
               }
             }
 
-            // Queue non-violation actions for execution after transaction
-            const sideEffectActions = result.actions.filter((a) => a.type !== 'create_violation');
-            if (sideEffectActions.length > 0) {
+            // Queue actions for execution after transaction
+            if (result.actions.length > 0) {
               pendingSideEffects.push({
                 context: { ...baseContext, rule },
-                result: { ...result, actions: sideEffectActions },
+                result,
                 rule,
               });
             }
@@ -1130,97 +1138,105 @@ export async function reEvaluateRulesOnTranscodeChange(
     const rule = transcodeRules.find((r) => r.id === result.ruleId);
     if (!rule) continue;
 
-    const violationAction = result.actions.find((a) => a.type === 'create_violation');
+    // Every rule match auto-creates a violation. Severity from rule.
+    const severity = rule.severity ?? 'warning';
+    const trustPenalty = getTrustScorePenalty(severity);
 
-    if (violationAction?.type === 'create_violation') {
-      const severity = violationAction.severity;
-      const trustPenalty = getTrustScorePenalty(severity);
+    // Use a transaction with advisory lock to prevent duplicate violations.
+    // The DB unique index uses ruleType (NULL for V2), and NULL != NULL in PG,
+    // so onConflictDoNothing can't catch V2 duplicates. The advisory lock
+    // serializes concurrent SSE + reconciliation poll attempts for the same
+    // session+rule pair, and the transaction ensures atomicity of the
+    // dedup check + insert + trust penalty.
+    const violationResult = await db.transaction(async (tx) => {
+      // Advisory lock scoped to this session+rule pair.
+      // Released automatically when the transaction commits/rolls back.
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${existingSession.id} || '::' || ${rule.id}))`
+      );
 
-      // Use a transaction with advisory lock to prevent duplicate violations.
-      // The DB unique index uses ruleType (NULL for V2), and NULL != NULL in PG,
-      // so onConflictDoNothing can't catch V2 duplicates. The advisory lock
-      // serializes concurrent SSE + reconciliation poll attempts for the same
-      // session+rule pair, and the transaction ensures atomicity of the
-      // dedup check + insert + trust penalty.
-      const violationResult = await db.transaction(async (tx) => {
-        // Advisory lock scoped to this session+rule pair.
-        // Released automatically when the transaction commits/rolls back.
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtext(${existingSession.id} || '::' || ${rule.id}))`
-        );
-
-        // Dedup check (now race-free under advisory lock)
-        const existing = await tx
-          .select({ id: violations.id })
-          .from(violations)
-          .where(
-            and(
-              eq(violations.ruleId, rule.id),
-              eq(violations.sessionId, existingSession.id),
-              isNull(violations.acknowledgedAt)
-            )
+      // Dedup check (now race-free under advisory lock)
+      const existing = await tx
+        .select({ id: violations.id })
+        .from(violations)
+        .where(
+          and(
+            eq(violations.ruleId, rule.id),
+            eq(violations.sessionId, existingSession.id),
+            isNull(violations.acknowledgedAt)
           )
-          .limit(1);
+        )
+        .limit(1);
 
-        if (existing[0]) return null; // Already has a violation for this rule + session
+      if (existing[0]) return null; // Already has a violation for this rule + session
 
-        const insertedViolations = await tx
-          .insert(violations)
-          .values({
-            ruleId: rule.id,
-            serverUserId: serverUser.id,
-            sessionId: existingSession.id,
-            severity,
-            ruleType: null,
-            data: {
-              ruleName: rule.name,
-              matchedGroups: result.matchedGroups,
-              sessionKey: session.sessionKey,
-              mediaTitle: session.mediaTitle,
-              ipAddress: session.ipAddress,
-              transcodeReEval: true,
-            },
-          })
-          .onConflictDoNothing()
-          .returning();
-
-        const violation = insertedViolations[0];
-        if (!violation) return null;
-
-        // Decrease trust score (atomic with the insert)
-        await tx
-          .update(serverUsers)
-          .set({
-            trustScore: sql`GREATEST(0, ${serverUsers.trustScore} - ${trustPenalty})`,
-            updatedAt: new Date(),
-          })
-          .where(eq(serverUsers.id, serverUser.id));
-
-        return violation;
-      });
-
-      if (violationResult) {
-        const ruleInfo = {
-          id: rule.id,
-          name: rule.name,
-          type: null,
-        };
-
-        createdViolations.push({ violation: violationResult, rule: ruleInfo, trustPenalty });
-
-        console.log(
-          `[rules] Transcode re-eval: rule "${rule.name}" matched session ${existingSession.id}`
-        );
+      // Collect related session IDs from evidence
+      const allRelatedSessionIds = new Set<string>();
+      for (const group of result.evidence ?? []) {
+        for (const cond of group.conditions) {
+          for (const id of cond.relatedSessionIds ?? []) {
+            allRelatedSessionIds.add(id);
+          }
+        }
       }
+
+      const insertedViolations = await tx
+        .insert(violations)
+        .values({
+          ruleId: rule.id,
+          serverUserId: serverUser.id,
+          sessionId: existingSession.id,
+          severity,
+          ruleType: null,
+          data: {
+            evidence: result.evidence,
+            relatedSessionIds: Array.from(allRelatedSessionIds),
+            ruleName: rule.name,
+            matchedGroups: result.matchedGroups,
+            sessionKey: session.sessionKey,
+            mediaTitle: session.mediaTitle,
+            ipAddress: session.ipAddress,
+            transcodeReEval: true,
+          },
+        })
+        .onConflictDoNothing()
+        .returning();
+
+      const violation = insertedViolations[0];
+      if (!violation) return null;
+
+      // Decrease trust score (atomic with the insert)
+      await tx
+        .update(serverUsers)
+        .set({
+          trustScore: sql`GREATEST(0, ${serverUsers.trustScore} - ${trustPenalty})`,
+          updatedAt: new Date(),
+        })
+        .where(eq(serverUsers.id, serverUser.id));
+
+      return violation;
+    });
+
+    if (violationResult) {
+      const ruleInfo = {
+        id: rule.id,
+        name: rule.name,
+        type: null,
+      };
+
+      createdViolations.push({ violation: violationResult, rule: ruleInfo, trustPenalty });
+
+      console.log(
+        `[rules] Transcode re-eval: rule "${rule.name}" matched session ${existingSession.id}`
+      );
     }
 
-    // Execute non-violation actions (e.g., kill_stream, send_notification)
+    // Execute actions (e.g., kill_stream, send_notification)
     // Runs outside the transaction - side effects shouldn't block violation commit,
     // and the advisory lock prevents duplicate action execution for the same rule+session.
-    const sideEffectActions = result.actions.filter((a) => a.type !== 'create_violation');
-    if (sideEffectActions.length > 0) {
+    if (result.actions.length > 0) {
       const context: EvaluationContext = { ...baseContext, rule };
-      const actionResults: ActionResult[] = await executeActions(context, sideEffectActions);
+      const actionResults: ActionResult[] = await executeActions(context, result.actions);
 
       const violationId =
         createdViolations.find((v) => v.rule.id === rule.id)?.violation.id ?? null;

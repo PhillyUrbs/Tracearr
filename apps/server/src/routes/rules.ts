@@ -17,7 +17,7 @@ import {
   bulkDeleteRulesSchema,
   bulkMigrateRulesSchema,
 } from '@tracearr/shared';
-import type { RuleConditions, RuleActions } from '@tracearr/shared';
+import type { RuleConditions, RuleActions, ViolationSeverity } from '@tracearr/shared';
 import { db } from '../db/client.js';
 import { rules, serverUsers, violations, servers } from '../db/schema.js';
 import { hasServerAccess } from '../utils/serverFiltering.js';
@@ -170,7 +170,7 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
       return reply.forbidden('Only server owners can create rules');
     }
 
-    const { name, description, serverId, isActive, conditions, actions } = body.data;
+    const { name, description, serverId, isActive, severity, conditions, actions } = body.data;
 
     // Verify serverId exists and user has access if provided
     if (serverId) {
@@ -198,6 +198,7 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
         description,
         serverId,
         isActive,
+        severity,
         conditions,
         actions,
       })
@@ -419,6 +420,7 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
     const updateData: Partial<{
       name: string;
       description: string | null;
+      severity: ViolationSeverity;
       conditions: RuleConditions;
       actions: RuleActions;
       isActive: boolean;
@@ -433,6 +435,10 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
 
     if (body.data.description !== undefined) {
       updateData.description = body.data.description;
+    }
+
+    if (body.data.severity !== undefined) {
+      updateData.severity = body.data.severity;
     }
 
     if (body.data.conditions !== undefined) {
@@ -780,6 +786,7 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
         await tx
           .update(rules)
           .set({
+            severity: migrated.severity,
             conditions: migrated.conditions,
             actions: migrated.actions,
             updatedAt: new Date(),
@@ -878,6 +885,7 @@ export const ruleRoutes: FastifyPluginAsync = async (app) => {
     const updated = await db
       .update(rules)
       .set({
+        severity: migrated.severity,
         conditions: migrated.conditions,
         actions: migrated.actions,
         updatedAt: new Date(),

@@ -9,6 +9,7 @@ import {
   violationIdParamSchema,
   type ViolationSessionInfo,
   type ViolationSortField,
+  type ViolationWithDetails,
 } from '@tracearr/shared';
 import { db } from '../db/client.js';
 import {
@@ -95,11 +96,20 @@ async function enrichViolations(violationData: ViolationRow[]) {
   if (violationData.length === 0) return [];
 
   // Identify violations that need historical/related data to batch queries
-  const violationsNeedingData = violationData.filter(
-    (v) =>
+  const violationsNeedingData = violationData.filter((v) => {
+    // V1 violations (old records): check ruleType
+    if (
       v.ruleType &&
       ['concurrent_streams', 'simultaneous_locations', 'device_velocity'].includes(v.ruleType)
-  );
+    ) {
+      return true;
+    }
+    // V2 violations: check for relatedSessionIds in data
+    const data = v.data;
+    return (
+      Array.isArray(data?.relatedSessionIds) && (data.relatedSessionIds as string[]).length > 0
+    );
+  });
 
   // Collect all relatedSessionIds from violation data for direct lookup
   const allRelatedSessionIds = new Set<string>();
@@ -561,6 +571,7 @@ async function enrichViolations(violationData: ViolationRow[]) {
           executedAt: r.executedAt.toISOString(),
         }));
       })(),
+      evidence: v.data?.evidence as ViolationWithDetails['evidence'] | undefined,
     };
   });
 }

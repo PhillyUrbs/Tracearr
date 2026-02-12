@@ -2,7 +2,12 @@
  * Shared violation formatting utilities
  */
 
-import { SEVERITY_LEVELS } from '@tracearr/shared';
+import {
+  SEVERITY_LEVELS,
+  CONDITION_FIELD_LABELS,
+  OPERATOR_LABELS,
+  type GroupEvidence,
+} from '@tracearr/shared';
 import type { ViolationWithDetails } from '../types.js';
 
 /** Fallback values when rule config doesn't specify */
@@ -81,11 +86,47 @@ export interface DiscordField {
 /**
  * Format violation details into Discord embed fields based on rule type
  */
+/**
+ * Format evidence from V2 rule evaluation into Discord embed fields.
+ */
+function formatEvidenceForDiscord(evidence: GroupEvidence[]): DiscordField[] {
+  const fields: DiscordField[] = [];
+
+  for (const group of evidence) {
+    const matchedConditions = group.conditions.filter((c) => c.matched);
+    for (const cond of matchedConditions) {
+      const label = CONDITION_FIELD_LABELS[cond.field] ?? cond.field;
+      const op = OPERATOR_LABELS[cond.operator] ?? cond.operator;
+      const actual =
+        cond.actual !== null && cond.actual !== undefined ? String(cond.actual) : 'N/A';
+      const threshold = String(cond.threshold);
+
+      fields.push({
+        name: label,
+        value: truncateForDiscord(`**${actual}** (${op} ${threshold})`),
+        inline: true,
+      });
+    }
+  }
+
+  return fields;
+}
+
+/**
+ * Format violation details into Discord embed fields based on rule type
+ */
 export function formatViolationDetailsForDiscord(
   ruleType: string | null,
   data: Record<string, unknown> | null
 ): DiscordField[] {
-  if (!data || !ruleType) return [];
+  if (!data) return [];
+
+  // V2 violations: format from evidence
+  if (!ruleType && Array.isArray(data.evidence)) {
+    return formatEvidenceForDiscord(data.evidence as GroupEvidence[]);
+  }
+
+  if (!ruleType) return [];
 
   switch (ruleType) {
     case 'impossible_travel': {

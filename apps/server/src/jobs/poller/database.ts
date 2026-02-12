@@ -15,6 +15,7 @@ import {
   type RuleV2,
   type RuleConditions,
   type RuleActions,
+  type ViolationSeverity,
 } from '@tracearr/shared';
 import { db } from '../../db/client.js';
 import { sessions, rules } from '../../db/schema.js';
@@ -130,6 +131,7 @@ export async function getActiveRulesV2(): Promise<RuleV2[]> {
     description: r.description,
     serverId: r.serverId,
     isActive: r.isActive,
+    severity: (r.severity ?? 'warning') as ViolationSeverity,
     conditions: r.conditions as RuleConditions,
     actions: r.actions as RuleActions,
     createdAt: r.createdAt,
