@@ -20,9 +20,9 @@
     "setupNote": "After creating your account, you'll add your Plex or Jellyfin servers from Settings.",
     "accountCreated": "Обліковий запис успішно створено!",
     "connectedTo": "Підключено до {{name}}",
-    "plexAuthFailed": "Plex authentication failed",
+    "plexAuthFailed": "Невдала авторизація Plex",
     "plexStartFailed": "Failed to start Plex login",
-    "serverConnectFailed": "Failed to connect to server",
+    "serverConnectFailed": "Не вдалося підключитися до сервера",
     "signupFailed": "Не вдалося зареєструватися",
     "createAccountFailed": "Не вдалося створити обліковий запис",
     "loginFailed": "Не вдалося увійти",
@@ -53,7 +53,7 @@
     "noUsersFound": "Користувачів не знайдено.",
     "searchPlaceholder": "Пошук користувачів...",
     "selectAllUsers": "Select all {{count}} users",
-    "resetTrustScore": "Reset Trust Score",
+    "resetTrustScore": "Скинути рейтинг довіри",
     "resetTrustScoreTitle_one": "Reset Trust Score for {{count}} User",
     "resetTrustScoreTitle_other": "Reset Trust Score for {{count}} Users",
     "resetTrustScoreConfirm": "Are you sure you want to reset the trust score to 100? This action cannot be undone."
@@ -63,8 +63,8 @@
     "userNotFound": "Користувача не знайдено",
     "userInfo": "Інформація про користувача",
     "statistics": "Статистика",
-    "sessions": "Sessions",
-    "violations": "Violations",
+    "sessions": "Сеанси",
+    "violations": "Порушення",
     "locations": "Місцезнаходження",
     "terminationHistory": "Termination History",
     "noSessionsFound": "Для цього користувача не знайдено жодного сеансу.",
@@ -72,10 +72,10 @@
     "noTerminationsFound": "No stream terminations for this user.",
     "byRule": "By / Rule",
     "manual": "Manual",
-    "unknownRule": "Unknown rule"
+    "unknownRule": "Невідоме правило"
   },
   "history": {
-    "title": "History",
+    "title": "Історія",
     "description": "Browse all streaming sessions with powerful filtering",
     "loadingMore": "Loading more...",
     "scrollForMore": "Scroll for more",
@@ -85,15 +85,15 @@
     "deleteSessionsConfirm": "Are you sure you want to delete? This action cannot be undone."
   },
   "library": {
-    "title": "Library",
+    "title": "Бібліотека",
     "description": "Top movies and shows on your server",
-    "topMovies": "Top Movies",
+    "topMovies": "Найкращі фільми",
     "topShows": "Top TV Shows",
     "noMoviePlays": "No movie plays in this period",
     "noShowPlays": "No TV show plays in this period"
   },
   "activity": {
-    "title": "Activity",
+    "title": "Активність",
     "description": "Play trends, patterns, and streaming behavior",
     "playsOverTime": "Plays Over Time",
     "concurrentStreams": "Concurrent Streams",
@@ -122,9 +122,9 @@
     "noViolationsFound": "No violations found",
     "noViolationsRecorded": "No violations have been recorded yet.",
     "allSeverities": "All Severities",
-    "allStatuses": "All Statuses",
+    "allStatuses": "Усі статуси",
     "detail": {
-      "notFound": "Violation not found",
+      "notFound": "Порушення не знайдено",
       "violationDetails": "Violation Details",
       "userInfo": "Користувач",
       "sessions": "Sessions",
