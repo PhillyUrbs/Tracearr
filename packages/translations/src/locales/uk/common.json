@@ -15,7 +15,7 @@
     "close": "Закрити",
     "retry": "Повторити спробу",
     "refresh": "Оновити",
-    "sync": "Sync",
+    "sync": "Синхр",
     "test": "Тест",
     "copy": "Копіювати",
     "signIn": "Увійти",
@@ -164,7 +164,7 @@
     "movie": "Фільм",
     "episode": "Епізод",
     "track": "Трек",
-    "liveTV": "Live TV",
+    "liveTV": "ТБ",
     "photo": "Фото"
   },
   "servers": {
@@ -202,12 +202,12 @@
   "count": {
     "user_one": "{{count}} користувач",
     "user_other": "{{count}} користувачів",
-    "session_one": "{{count}} session",
-    "session_other": "{{count}} sessions",
+    "session_one": "{{count}} сеанс",
+    "session_other": "{{count}} сеансів",
     "stream_one": "{{count}} stream",
     "stream_other": "{{count}} streams",
     "server_one": "{{count}} сервер",
-    "server_other": "{{count}} servers",
+    "server_other": "{{count}} сервери",
     "rule_one": "{{count}} правило",
     "rule_other": "{{count}} правила",
     "violation_one": "{{count}} порушення",
