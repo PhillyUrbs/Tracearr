@@ -91,10 +91,10 @@
     "password": "Пароль",
     "displayName": "Відображуване ім'я",
     "createYourAccount": "Створіть обліковий запис, щоб розпочати",
-    "signInToAccount": "Sign in to your account",
+    "signInToAccount": "Увійдіть у свій обліковий запис",
     "useLocalAccount": "Use local account instead",
     "useJellyfinAccount": "Use Jellyfin account instead",
-    "waitingForPlex": "Waiting for Plex authorization..."
+    "waitingForPlex": "Очікування авторизації Plex..."
   },
   "update": {
     "title": "Доступне оновлення",
