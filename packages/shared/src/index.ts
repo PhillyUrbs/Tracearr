@@ -425,6 +425,7 @@ export {
   getSpeedUnit,
   toMetricDistance,
   fromMetricDistance,
+  formatConditionFieldValue,
   // Timezone utilities
   getClientTimezone,
   isValidTimezone,

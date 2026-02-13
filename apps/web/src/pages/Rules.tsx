@@ -586,7 +586,7 @@ function RuleCard({
 
   // Get subtitle: V2 shows summary, V1 shows type label
   const subtitle = isV2
-    ? getRuleSummary(rule, filterOptions)
+    ? getRuleSummary(rule, filterOptions, unitSystem)
     : (ruleType?.label ?? rule.type?.replace(/_/g, ' ') ?? 'Unknown');
 
   return (

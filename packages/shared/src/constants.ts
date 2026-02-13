@@ -404,6 +404,45 @@ export function fromMetricDistance(km: number, unitSystem: UnitSystem): number {
   return km;
 }
 
+/** Fields that store distance values in metric (km) */
+const DISTANCE_FIELDS = ['active_session_distance_km'] as const;
+
+/** Fields that store speed values in metric (km/h) */
+const SPEED_FIELDS = ['travel_speed_kmh'] as const;
+
+/**
+ * Convert a condition field value for display based on user's unit preference.
+ *
+ * @param value - The value to convert
+ * @param field - The condition field name
+ * @param unitSystem - User's preferred unit system
+ * @returns Object with displayValue (rounded) and unit label
+ */
+export function formatConditionFieldValue(
+  value: number,
+  field: string,
+  unitSystem: UnitSystem
+): { displayValue: number; unit: string } {
+  const isDistanceField = (DISTANCE_FIELDS as readonly string[]).includes(field);
+  const isSpeedField = (SPEED_FIELDS as readonly string[]).includes(field);
+
+  if (isDistanceField) {
+    return {
+      displayValue: Math.round(fromMetricDistance(value, unitSystem)),
+      unit: getDistanceUnit(unitSystem),
+    };
+  }
+
+  if (isSpeedField) {
+    return {
+      displayValue: Math.round(fromMetricDistance(value, unitSystem)),
+      unit: getSpeedUnit(unitSystem),
+    };
+  }
+
+  return { displayValue: value, unit: '' };
+}
+
 /**
  * Format bitrate for display with appropriate unit (kbps, Mbps, Gbps)
  * @param kbps - Bitrate in kilobits per second

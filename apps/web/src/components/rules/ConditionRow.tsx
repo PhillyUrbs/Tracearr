@@ -1,11 +1,6 @@
 import { ChevronsUpDown, X } from 'lucide-react';
 import type { Condition, ConditionField, Operator, RulesFilterOptions } from '@tracearr/shared';
-import {
-  getSpeedUnit,
-  getDistanceUnit,
-  fromMetricDistance,
-  toMetricDistance,
-} from '@tracearr/shared';
+import { fromMetricDistance, toMetricDistance, formatConditionFieldValue } from '@tracearr/shared';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -308,18 +303,11 @@ function ValueInput({
 
   // Number
   if (fieldDef.valueType === 'number') {
-    // Check if this field needs unit conversion (distance or speed)
-    const isDistanceField = fieldDef.field === 'active_session_distance_km';
-    const isSpeedField = fieldDef.field === 'travel_speed_kmh';
-    const needsConversion = isDistanceField || isSpeedField;
+    const numericValue = typeof value === 'number' ? value : 0;
+    const converted = formatConditionFieldValue(numericValue, fieldDef.field, unitSystem);
+    const needsConversion = Boolean(converted.unit);
 
-    // Get display unit based on user preference
-    let displayUnit = fieldDef.unit;
-    if (isDistanceField) {
-      displayUnit = getDistanceUnit(unitSystem);
-    } else if (isSpeedField) {
-      displayUnit = getSpeedUnit(unitSystem);
-    }
+    const displayUnit = converted.unit || fieldDef.unit;
 
     // Convert value for display (metric value from DB to user's preferred unit)
     let displayValue = value as number;

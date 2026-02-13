@@ -14,6 +14,7 @@ import type {
   Operator,
   RulesFilterOptions,
 } from '@tracearr/shared';
+import { type UnitSystem, formatConditionFieldValue } from '@tracearr/shared';
 import {
   MapPin,
   Users,
@@ -131,7 +132,11 @@ function countTotalConditions(rule: Rule): number {
 /**
  * Format a single condition to a human-readable string.
  */
-export function formatCondition(condition: Condition, filterOptions?: RulesFilterOptions): string {
+export function formatCondition(
+  condition: Condition,
+  filterOptions?: RulesFilterOptions,
+  unitSystem?: UnitSystem
+): string {
   const fieldDef = FIELD_DEFINITIONS[condition.field];
   const label = COMPACT_FIELD_LABELS[condition.field] ?? fieldDef?.label ?? condition.field;
   const operator = OPERATOR_SYMBOLS[condition.operator] ?? condition.operator;
@@ -144,8 +149,25 @@ export function formatCondition(condition: Condition, filterOptions?: RulesFilte
     return `Not ${label.toLowerCase()}`;
   }
 
-  // Format the value
-  const formattedValue = formatConditionValue(condition, fieldDef, filterOptions);
+  let formattedValue = formatConditionValue(condition, fieldDef, filterOptions);
+  const effectiveUnitSystem = unitSystem ?? 'metric';
+
+  let unit = '';
+  if (typeof condition.value === 'number') {
+    const converted = formatConditionFieldValue(
+      condition.value,
+      condition.field,
+      effectiveUnitSystem
+    );
+    if (converted.unit) {
+      formattedValue = String(converted.displayValue);
+      unit = ` ${converted.unit}`;
+    }
+  }
+
+  if (!unit && fieldDef?.unit) {
+    unit = ` ${fieldDef.unit}`;
+  }
 
   // For 'in' operator with arrays, use format: "Country in US, CA"
   if (condition.operator === 'in' || condition.operator === 'not_in') {
@@ -153,7 +175,6 @@ export function formatCondition(condition: Condition, filterOptions?: RulesFilte
   }
 
   // Standard format: "Inactive > 180 days"
-  const unit = fieldDef?.unit ? ` ${fieldDef.unit}` : '';
   return `${label} ${operator} ${formattedValue}${unit}`;
 }
 
@@ -276,7 +297,11 @@ function formatActions(actions: Action[]): string {
  *
  * Format: "Inactive > 180 days (+2 conditions) → Warning"
  */
-export function getRuleSummary(rule: Rule, filterOptions?: RulesFilterOptions): string {
+export function getRuleSummary(
+  rule: Rule,
+  filterOptions?: RulesFilterOptions,
+  unitSystem?: UnitSystem
+): string {
   // Conditions part
   const firstCondition = getFirstCondition(rule);
   const totalConditions = countTotalConditions(rule);
@@ -285,7 +310,7 @@ export function getRuleSummary(rule: Rule, filterOptions?: RulesFilterOptions): 
   if (!firstCondition) {
     conditionsPart = 'No conditions';
   } else {
-    conditionsPart = formatCondition(firstCondition, filterOptions);
+    conditionsPart = formatCondition(firstCondition, filterOptions, unitSystem);
     if (totalConditions > 1) {
       conditionsPart += ` (+${totalConditions - 1} more)`;
     }

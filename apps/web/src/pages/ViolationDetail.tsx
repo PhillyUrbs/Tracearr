@@ -15,6 +15,8 @@ import {
   collectViolationSessions,
   CONDITION_FIELD_LABELS,
   OPERATOR_LABELS,
+  formatConditionFieldValue,
+  type UnitSystem,
 } from '@tracearr/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataTable } from '@/components/ui/data-table';
@@ -62,18 +64,31 @@ import { ruleIconsLarge as ruleIcons } from '@/components/violations/ruleIcons';
 
 function ConditionEvidenceRow({
   condition,
-  unitSystem: _unitSystem,
+  unitSystem,
 }: {
   condition: ConditionEvidence;
-  unitSystem: string;
+  unitSystem: UnitSystem;
 }) {
   const label = CONDITION_FIELD_LABELS[condition.field] ?? condition.field;
   const op = OPERATOR_LABELS[condition.operator] ?? condition.operator;
-  const actual =
-    condition.actual !== null && condition.actual !== undefined
-      ? String(condition.actual)
-      : 'unknown';
-  const threshold = String(condition.threshold);
+
+  const thresholdNum = Number(condition.threshold);
+  const thresholdFormatted = formatConditionFieldValue(thresholdNum, condition.field, unitSystem);
+  const unitSuffix = thresholdFormatted.unit ? ` ${thresholdFormatted.unit}` : '';
+  const thresholdDisplay = thresholdFormatted.unit
+    ? String(thresholdFormatted.displayValue)
+    : String(condition.threshold);
+
+  let actualDisplay: string;
+  if (condition.actual !== null && condition.actual !== undefined) {
+    const actualNum = Number(condition.actual);
+    const actualFormatted = formatConditionFieldValue(actualNum, condition.field, unitSystem);
+    actualDisplay = actualFormatted.unit
+      ? String(actualFormatted.displayValue)
+      : String(condition.actual);
+  } else {
+    actualDisplay = 'unknown';
+  }
 
   return (
     <div className="flex items-start gap-3 py-2">
@@ -88,14 +103,16 @@ function ConditionEvidenceRow({
         <div className="flex flex-wrap items-baseline gap-x-2">
           <span className="text-sm font-medium">{label}</span>
           <span className="text-muted-foreground text-xs">
-            {op} {threshold}
+            {op} {thresholdDisplay}
+            {unitSuffix}
           </span>
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
           <span
             className={`text-sm ${condition.matched ? 'font-semibold text-red-600' : 'text-muted-foreground'}`}
           >
-            Actual: {actual}
+            Actual: {actualDisplay}
+            {unitSuffix}
           </span>
           {condition.relatedSessionIds && condition.relatedSessionIds.length > 0 && (
             <span className="text-muted-foreground text-xs">
@@ -109,7 +126,13 @@ function ConditionEvidenceRow({
   );
 }
 
-function EvidenceGroupCard({ group, unitSystem }: { group: GroupEvidence; unitSystem: string }) {
+function EvidenceGroupCard({
+  group,
+  unitSystem,
+}: {
+  group: GroupEvidence;
+  unitSystem: UnitSystem;
+}) {
   const matchedCount = group.conditions.filter((c) => c.matched).length;
   const totalCount = group.conditions.length;
 
@@ -149,7 +172,7 @@ export function ViolationDetail() {
 
   const { data: violation, isLoading } = useViolation(id!);
   const { data: settings } = useSettings();
-  const unitSystem = settings?.unitSystem ?? 'metric';
+  const unitSystem: UnitSystem = settings?.unitSystem ?? 'metric';
   const acknowledgeViolation = useAcknowledgeViolation();
   const dismissViolation = useDismissViolation();
 
