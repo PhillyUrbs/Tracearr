@@ -10,19 +10,19 @@
         "message": "Сервер успішно видалено"
       },
       "serverSynced": {
-        "title": "Server Synced",
-        "message": "Server data has been synchronized"
+        "title": "Сервер синхронізовано",
+        "message": "Дані сервера синхронізовано"
       },
       "settingsUpdated": {
         "title": "Налаштування оновлено",
         "message": "Ваші налаштування збережено"
       },
       "tokenCopied": {
-        "title": "Token Copied",
-        "message": "Pair token copied to clipboard"
+        "title": "Токен скопійовано",
+        "message": "Парний токен скопійовано до буфера обміну"
       },
       "violationAcknowledged": {
-        "title": "Violation Acknowledged",
+        "title": "Порушення підтверджено",
         "message": "The violation has been marked as acknowledged"
       },
       "violationDismissed": {
@@ -30,24 +30,24 @@
         "message": "The violation has been dismissed"
       },
       "deviceRemoved": {
-        "title": "Device Removed",
-        "message": "The device has been disconnected"
+        "title": "Пристрій видалено",
+        "message": "Пристрій відключено"
       },
       "deviceRenamed": {
-        "title": "Device Renamed",
-        "message": "The device name has been updated"
+        "title": "Пристрій перейменовано",
+        "message": "Назву пристрою оновлено"
       },
       "sessionsRevoked": {
         "title": "Sessions Revoked",
         "message": "All mobile sessions have been revoked"
       },
       "loggedIn": {
-        "title": "Success",
-        "message": "Logged in successfully"
+        "title": "Успішно",
+        "message": "Успішно ввійшли"
       },
       "webhookTest": {
         "title": "Test Successful",
-        "message": "Webhook is working correctly"
+        "message": "Вебхук працює правильно"
       },
       "copiedToClipboard": {
         "title": "Copied to clipboard"
