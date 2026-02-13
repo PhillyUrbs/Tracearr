@@ -2,7 +2,7 @@
   "pair": {
     "welcome": "Ласкаво просимо до Tracearr",
     "addServer": "Додати сервер",
-    "connectToServer": "Connect to Server",
+    "connectToServer": "Підключитися до сервера",
     "enterServerDetails": "Enter your Tracearr server URL and mobile access token",
     "serverUrl": "URL-адреса сервера",
     "accessToken": "Токен доступу",
