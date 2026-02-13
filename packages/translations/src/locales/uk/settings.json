@@ -65,11 +65,11 @@
     "importComplete": "Import Complete",
     "importFailed": "Import Failed",
     "processed": "Processed",
-    "page": "Page",
-    "imported": "Imported",
-    "skipped": "Skipped",
+    "page": "Сторінка",
+    "imported": "Імпортовано",
+    "skipped": "Пропущено",
     "enriched": "Enriched",
-    "errors": "Errors"
+    "errors": "Помилки"
   },
   "plex": {
     "linkedAccounts": "Linked Plex Accounts",
@@ -85,20 +85,20 @@
     "password": "Jellyfin Password"
   },
   "account": {
-    "createAccount": "Create Account",
-    "signIn": "Sign In",
+    "createAccount": "Створити обліковий запис",
+    "signIn": "Увійти",
     "email": "Email",
-    "password": "Password",
+    "password": "Пароль",
     "displayName": "Display Name",
-    "createYourAccount": "Create your account to get started",
+    "createYourAccount": "Створіть обліковий запис, щоб розпочати",
     "signInToAccount": "Sign in to your account",
     "useLocalAccount": "Use local account instead",
     "useJellyfinAccount": "Use Jellyfin account instead",
     "waitingForPlex": "Waiting for Plex authorization..."
   },
   "update": {
-    "title": "Update Available",
-    "releaseNotes": "Release Notes",
+    "title": "Доступне оновлення",
+    "releaseNotes": "Примітки до оновлення",
     "updateCommand": "Update Command",
     "pullInstructions": "After pulling, restart your container to apply the update.",
     "stableRelease": "Стабільна версія",
