@@ -26,33 +26,33 @@
     "serverName": "Назва сервера",
     "serverUrl": "URL-адреса сервера",
     "apiKey": "Ключ API",
-    "syncInterval": "Sync Interval",
+    "syncInterval": "Інтервал синхронізації",
     "testConnection": "Перевірити підключення",
     "connectionSuccess": "Підключення успішне",
     "connectionFailed": "Не вдалося підключитися"
   },
   "mobile": {
     "title": "Мобільний додаток",
-    "pairDevice": "Pair Device",
+    "pairDevice": "Підключити пристрій",
     "connectedDevices": "Підключені пристрої",
     "generateToken": "Generate Pair Token",
-    "scanQrCode": "Scan QR Code",
-    "tokenExpires": "Token expires in {{time}}",
+    "scanQrCode": "Проскануйте QR-код",
+    "tokenExpires": "Термін дії токена закінчується через {{time}}",
     "noDevices": "Немає підключених пристроїв",
     "revokeAll": "Скасувати всі сеанси"
   },
   "webhooks": {
     "title": "Webhook Configuration",
-    "discordWebhook": "Discord Webhook URL",
-    "ntfyTopic": "Ntfy Topic",
+    "discordWebhook": "URL-адреса вебхука Discord",
+    "ntfyTopic": "Ntfy тема",
     "customWebhook": "Custom Webhook URL",
-    "webhookFormat": "Webhook Format",
+    "webhookFormat": "Формат вебхука",
     "testWebhook": "Test Webhook"
   },
   "advanced": {
-    "title": "Advanced Settings",
+    "title": "Розширені налаштування",
     "basePath": "Base Path",
-    "externalUrl": "External URL",
+    "externalUrl": "Зовнішня URL-адреса",
     "trustProxy": "Trust Proxy Headers",
     "reverseProxy": "Reverse Proxy",
     "connectionScenarios": "Connection Scenarios"
@@ -62,9 +62,9 @@
     "jellystat": "Імпортувати з Jellystat",
     "tautulli": "Імпортувати з Tautulli",
     "importProgress": "Import Progress",
-    "importComplete": "Import Complete",
-    "importFailed": "Import Failed",
-    "processed": "Processed",
+    "importComplete": "Імпорт завершено",
+    "importFailed": "Не вдалося імпортувати",
+    "processed": "Оброблено",
     "page": "Сторінка",
     "imported": "Імпортовано",
     "skipped": "Пропущено",
@@ -72,24 +72,24 @@
     "errors": "Помилки"
   },
   "plex": {
-    "linkedAccounts": "Linked Plex Accounts",
-    "unlinkAccount": "Unlink Plex Account",
-    "signInWithPlex": "Sign in with Plex",
+    "linkedAccounts": "Зв'язані облікові записи Plex",
+    "unlinkAccount": "Від'єднати обліковий запис Plex",
+    "signInWithPlex": "Увійти через Plex",
     "signUpWithPlex": "Sign up with Plex",
-    "selectServer": "Select Server",
-    "chooseServer": "Choose which Plex Media Server to monitor"
+    "selectServer": "Оберіть сервер",
+    "chooseServer": "Виберіть, який Plex медіасервер відстежувати"
   },
   "jellyfin": {
-    "signInWithJellyfin": "Sign in with Jellyfin",
-    "username": "Jellyfin Username",
-    "password": "Jellyfin Password"
+    "signInWithJellyfin": "Увійти через Jellyfin",
+    "username": "Ім'я користувача Jellyfin",
+    "password": "Пароль Jellyfin"
   },
   "account": {
     "createAccount": "Створити обліковий запис",
     "signIn": "Увійти",
-    "email": "Email",
+    "email": "Електронна пошта",
     "password": "Пароль",
-    "displayName": "Display Name",
+    "displayName": "Відображуване ім'я",
     "createYourAccount": "Створіть обліковий запис, щоб розпочати",
     "signInToAccount": "Sign in to your account",
     "useLocalAccount": "Use local account instead",
