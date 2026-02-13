@@ -18,7 +18,10 @@
     "primaryAuth": "Méthode d'authentification principale",
     "localAccount": "Compte local",
     "plexAccount": "Compte Plex",
-    "jellyfinAccount": "Compte Jellyfin"
+    "jellyfinAccount": "Compte Jellyfin",
+    "language": "Language",
+    "languageDescription": "Choose your preferred display language.",
+    "helpTranslate": "Help translate Tracearr"
   },
   "servers": {
     "title": "Serveurs connectés",
