@@ -1,5 +1,11 @@
 import { ChevronsUpDown, X } from 'lucide-react';
 import type { Condition, ConditionField, Operator, RulesFilterOptions } from '@tracearr/shared';
+import {
+  getSpeedUnit,
+  getDistanceUnit,
+  fromMetricDistance,
+  toMetricDistance,
+} from '@tracearr/shared';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -26,6 +32,7 @@ import {
   isArrayOperator,
   type FieldCategory,
 } from '@/lib/rules';
+import { useSettings } from '@/hooks/queries';
 
 interface ConditionRowProps {
   condition: Condition;
@@ -44,6 +51,8 @@ export function ConditionRow({
 }: ConditionRowProps) {
   const fieldDef = FIELD_DEFINITIONS[condition.field];
   const fieldsByCategory = getFieldsByCategory();
+  const { data: settings } = useSettings();
+  const unitSystem = settings?.unitSystem ?? 'metric';
 
   // Handle field change - reset operator and value
   const handleFieldChange = (newField: ConditionField) => {
@@ -152,6 +161,7 @@ export function ConditionRow({
           onChange={handleValueChange}
           isArrayOperator={isArrayOperator(condition.operator)}
           filterOptions={filterOptions}
+          unitSystem={unitSystem}
         />
       </div>
 
@@ -212,6 +222,7 @@ interface ValueInputProps {
   onChange: (value: Condition['value']) => void;
   isArrayOperator: boolean;
   filterOptions?: RulesFilterOptions;
+  unitSystem: 'metric' | 'imperial';
 }
 
 // Get dynamic options for fields that need API data
@@ -249,6 +260,7 @@ function ValueInput({
   onChange,
   isArrayOperator: isArray,
   filterOptions,
+  unitSystem,
 }: ValueInputProps) {
   // Boolean
   if (fieldDef.valueType === 'boolean') {
@@ -296,17 +308,47 @@ function ValueInput({
 
   // Number
   if (fieldDef.valueType === 'number') {
+    // Check if this field needs unit conversion (distance or speed)
+    const isDistanceField = fieldDef.field === 'active_session_distance_km';
+    const isSpeedField = fieldDef.field === 'travel_speed_kmh';
+    const needsConversion = isDistanceField || isSpeedField;
+
+    // Get display unit based on user preference
+    let displayUnit = fieldDef.unit;
+    if (isDistanceField) {
+      displayUnit = getDistanceUnit(unitSystem);
+    } else if (isSpeedField) {
+      displayUnit = getSpeedUnit(unitSystem);
+    }
+
+    // Convert value for display (metric value from DB to user's preferred unit)
+    let displayValue = value as number;
+    if (needsConversion && typeof value === 'number') {
+      displayValue = Math.round(fromMetricDistance(value, unitSystem));
+    }
+
+    // Handle value change with conversion back to metric
+    const handleNumericChange = (inputValue: number) => {
+      if (needsConversion) {
+        // Convert display value back to metric for storage
+        const metricValue = Math.round(toMetricDistance(inputValue, unitSystem));
+        onChange(metricValue);
+      } else {
+        onChange(inputValue);
+      }
+    };
+
     return (
       <div className="flex items-center gap-1">
         <NumericInput
           min={fieldDef.min}
           max={fieldDef.max}
           step={fieldDef.step}
-          value={value as number}
-          onChange={onChange}
+          value={displayValue}
+          onChange={handleNumericChange}
         />
-        {fieldDef.unit && (
-          <span className="text-muted-foreground text-sm whitespace-nowrap">{fieldDef.unit}</span>
+        {displayUnit && (
+          <span className="text-muted-foreground text-sm whitespace-nowrap">{displayUnit}</span>
         )}
       </div>
     );
