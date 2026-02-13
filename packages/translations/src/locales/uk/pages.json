@@ -45,7 +45,7 @@
     "streamLocations": "Stream Locations",
     "serverResources": "Ресурси сервера",
     "noActiveStreams": "Немає активних потоків",
-    "streamsAppearHere": "Активні потоки з'являться тут, коли користувачі почнуть дивитися"
+    "streamsAppearHere": "Активні потоки з'являться тут, коли користувачі почнуть перегляд"
   },
   "users": {
     "title": "Користувачі",
