@@ -49,7 +49,9 @@ export const jellyfinRoutes: FastifyPluginAsync = async (app) => {
       const jellyfinServers = await db.select().from(servers).where(eq(servers.type, 'jellyfin'));
 
       if (jellyfinServers.length === 0) {
-        return reply.unauthorized('No Jellyfin servers configured. Please add a server first.');
+        return await reply.unauthorized(
+          'No Jellyfin servers configured. Please add a server first.'
+        );
       }
 
       // Try to authenticate with each server
@@ -65,21 +67,21 @@ export const jellyfinRoutes: FastifyPluginAsync = async (app) => {
             );
 
             // Check if user already exists
-            let user = await getUserByUsername(username);
+            const user = await getUserByUsername(username);
 
             if (!user) {
               // Only the owner (created via Plex or local signup) can log in
-              return reply.forbidden(
+              return await reply.forbidden(
                 'This Tracearr instance already has an owner. Only the owner can log in.'
               );
             }
 
             if (user.role !== 'owner') {
-              return reply.forbidden('Only the owner can log in to this Tracearr instance.');
+              return await reply.forbidden('Only the owner can log in to this Tracearr instance.');
             }
 
             // Generate and return tokens
-            return generateTokens(app, user.id, user.username, user.role);
+            return await generateTokens(app, user.id, user.username, user.role);
           }
         } catch (error) {
           // Authentication failed on this server, try next one
@@ -93,12 +95,12 @@ export const jellyfinRoutes: FastifyPluginAsync = async (app) => {
 
       // Authentication failed on all servers or user is not admin
       app.log.warn({ username }, 'Jellyfin login failed: invalid credentials or not admin');
-      return reply.unauthorized(
+      return await reply.unauthorized(
         'Invalid username or password, or user is not an administrator on any configured Jellyfin server'
       );
     } catch (error) {
       app.log.error({ error, username }, 'Jellyfin login error');
-      return reply.internalServerError('Failed to authenticate with Jellyfin servers');
+      return await reply.internalServerError('Failed to authenticate with Jellyfin servers');
     }
   });
 
