@@ -19,9 +19,9 @@
     "localAccount": "Compte local",
     "plexAccount": "Compte Plex",
     "jellyfinAccount": "Compte Jellyfin",
-    "language": "Language",
-    "languageDescription": "Choose your preferred display language.",
-    "helpTranslate": "Help translate Tracearr"
+    "language": "Langue",
+    "languageDescription": "Choisissez votre langue d'affichage préférée.",
+    "helpTranslate": "Aidez-nous à traduire Tracearr"
   },
   "servers": {
     "title": "Serveurs connectés",
