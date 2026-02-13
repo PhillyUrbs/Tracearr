@@ -37,7 +37,7 @@
     "claimCodeSecurityNote": "This security measure ensures only authorized users can complete first-time setup"
   },
   "dashboard": {
-    "alerts": "Alerts",
+    "alerts": "Попередження",
     "plays": "Plays",
     "watchTime": "Час перегляду",
     "activeUsers": "Активні користувачі",
