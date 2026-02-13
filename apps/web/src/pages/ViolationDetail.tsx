@@ -65,27 +65,44 @@ import { ruleIconsLarge as ruleIcons } from '@/components/violations/ruleIcons';
 function ConditionEvidenceRow({
   condition,
   unitSystem,
+  userIdToName,
 }: {
   condition: ConditionEvidence;
   unitSystem: UnitSystem;
+  userIdToName?: Record<string, string>;
 }) {
   const label = CONDITION_FIELD_LABELS[condition.field] ?? condition.field;
   const op = OPERATOR_LABELS[condition.operator] ?? condition.operator;
 
+  const resolveValue = (value: unknown): string => {
+    const str = String(value);
+    if (condition.field === 'user_id' && userIdToName?.[str]) {
+      return userIdToName[str];
+    }
+    return str;
+  };
+
   const thresholdNum = Number(condition.threshold);
   const thresholdFormatted = formatConditionFieldValue(thresholdNum, condition.field, unitSystem);
   const unitSuffix = thresholdFormatted.unit ? ` ${thresholdFormatted.unit}` : '';
-  const thresholdDisplay = thresholdFormatted.unit
-    ? String(thresholdFormatted.displayValue)
-    : String(condition.threshold);
+  const thresholdDisplay =
+    condition.field === 'user_id'
+      ? resolveValue(condition.threshold)
+      : thresholdFormatted.unit
+        ? String(thresholdFormatted.displayValue)
+        : String(condition.threshold);
 
   let actualDisplay: string;
   if (condition.actual !== null && condition.actual !== undefined) {
-    const actualNum = Number(condition.actual);
-    const actualFormatted = formatConditionFieldValue(actualNum, condition.field, unitSystem);
-    actualDisplay = actualFormatted.unit
-      ? String(actualFormatted.displayValue)
-      : String(condition.actual);
+    if (condition.field === 'user_id') {
+      actualDisplay = resolveValue(condition.actual);
+    } else {
+      const actualNum = Number(condition.actual);
+      const actualFormatted = formatConditionFieldValue(actualNum, condition.field, unitSystem);
+      actualDisplay = actualFormatted.unit
+        ? String(actualFormatted.displayValue)
+        : String(condition.actual);
+    }
   } else {
     actualDisplay = 'unknown';
   }
@@ -129,9 +146,11 @@ function ConditionEvidenceRow({
 function EvidenceGroupCard({
   group,
   unitSystem,
+  userIdToName,
 }: {
   group: GroupEvidence;
   unitSystem: UnitSystem;
+  userIdToName?: Record<string, string>;
 }) {
   const matchedCount = group.conditions.filter((c) => c.matched).length;
   const totalCount = group.conditions.length;
@@ -156,6 +175,7 @@ function EvidenceGroupCard({
               key={`${condition.field}-${idx}`}
               condition={condition}
               unitSystem={unitSystem}
+              userIdToName={userIdToName}
             />
           ))}
         </div>
@@ -346,8 +366,21 @@ export function ViolationDetail() {
     );
   }
 
-  const description = getViolationDescription(violation, unitSystem);
-  const details = getViolationDetails(violation, unitSystem);
+  const userDisplayName = violation.user.identityName ?? violation.user.username;
+
+  const rawDescription = getViolationDescription(violation, unitSystem);
+  const description = rawDescription.split(violation.user.id).join(userDisplayName);
+
+  const rawDetails = getViolationDetails(violation, unitSystem);
+  const details = Object.fromEntries(
+    Object.entries(rawDetails).map(([key, value]) => {
+      if (typeof value === 'string' && value === violation.user.id) {
+        return [key, userDisplayName];
+      }
+      return [key, value];
+    })
+  );
+
   const isPending = !violation.acknowledgedAt;
   const ruleIcon = (violation.rule.type && ruleIcons[violation.rule.type]) ?? (
     <AlertTriangle className="h-5 w-5" />
@@ -497,7 +530,12 @@ export function ViolationDetail() {
           </h2>
           <div className="grid gap-4 lg:grid-cols-2">
             {violation.evidence.map((group) => (
-              <EvidenceGroupCard key={group.groupIndex} group={group} unitSystem={unitSystem} />
+              <EvidenceGroupCard
+                key={group.groupIndex}
+                group={group}
+                unitSystem={unitSystem}
+                userIdToName={{ [violation.user.id]: userDisplayName }}
+              />
             ))}
           </div>
         </div>

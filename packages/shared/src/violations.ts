@@ -346,13 +346,8 @@ export function formatEvidenceDetails(
     for (const cond of group.conditions) {
       const label = CONDITION_FIELD_LABELS[cond.field] ?? cond.field;
       const actual = formatConditionActual(cond, unitSystem);
-      const op = OPERATOR_LABELS[cond.operator] ?? cond.operator;
 
-      details[label] = {
-        actual,
-        threshold: `${op} ${cond.threshold}`,
-        matched: cond.matched,
-      };
+      details[label] = actual;
 
       // Add field-specific details
       if (cond.field === 'travel_speed_kmh' && cond.details) {
