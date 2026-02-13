@@ -18,7 +18,10 @@
     "primaryAuth": "Основний метод автентифікації",
     "localAccount": "Локальний обліковий запис",
     "plexAccount": "Обліковий запис Plex",
-    "jellyfinAccount": "Обліковий запис Jellyfin"
+    "jellyfinAccount": "Обліковий запис Jellyfin",
+    "language": "Language",
+    "languageDescription": "Choose your preferred display language.",
+    "helpTranslate": "Help translate Tracearr"
   },
   "servers": {
     "title": "Підключені сервери",
