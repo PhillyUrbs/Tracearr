@@ -27,7 +27,7 @@
       },
       "violationDismissed": {
         "title": "Violation Dismissed",
-        "message": "The violation has been dismissed"
+        "message": "Порушення було відхилено"
       },
       "deviceRemoved": {
         "title": "Пристрій видалено",
@@ -46,11 +46,11 @@
         "message": "Успішно ввійшли"
       },
       "webhookTest": {
-        "title": "Test Successful",
+        "title": "Тестування успішне",
         "message": "Вебхук працює правильно"
       },
       "copiedToClipboard": {
-        "title": "Copied to clipboard"
+        "title": "Скопійовати до буфера обміну"
       },
       "plexAccountLinked": {
         "title": "Plex Account Linked",
@@ -58,7 +58,7 @@
       },
       "plexAccountUnlinked": {
         "title": "Plex Account Unlinked",
-        "message": "Your Plex account has been disconnected"
+        "message": "Ваш обліковий запис Plex відключено"
       },
       "agentAdded": {
         "title": "Agent Added",
@@ -77,65 +77,65 @@
         "message": "{{name}} finished successfully"
       },
       "ruleCreated": {
-        "title": "Rule Created",
-        "message": "The rule has been created successfully"
+        "title": "Правило створено",
+        "message": "Правило успішно створено"
       },
       "ruleUpdated": {
-        "title": "Rule Updated",
-        "message": "The rule has been updated successfully"
+        "title": "Правило оновлено",
+        "message": "Правило успішно оновлено"
       },
       "ruleDeleted": {
-        "title": "Rule Deleted",
-        "message": "The rule has been deleted successfully"
+        "title": "Правило видалено",
+        "message": "Правило успішно видалено"
       },
       "streamTerminated": {
         "title": "Stream Terminated",
         "message": "The playback session has been stopped"
       },
       "serverUrlUpdated": {
-        "title": "Server URL Updated",
-        "message": "The server URL has been updated successfully"
+        "title": "URL-адресу сервера оновлено",
+        "message": "URL-адресу сервера успішно оновлено"
       },
       "serverUpdated": {
-        "title": "Server Updated",
-        "message": "The server has been updated successfully"
+        "title": "Сервер оновлено",
+        "message": "Сервер успішно оновлено"
       },
       "syncCompletedWithErrors": {
-        "title": "Sync Completed with Errors"
+        "title": "Синхронізація завершена з помилками"
       },
       "sessionsDeleted": {
-        "title": "Sessions Deleted",
-        "message_one": "{{count}} session deleted",
-        "message_other": "{{count}} sessions deleted"
+        "title": "Сеанси видалено",
+        "message_one": "{{count}} сеанс видалено",
+        "message_other": "Видалено {{count}} сеансів"
       },
       "violationsAcknowledged": {
-        "title": "Violations Acknowledged",
-        "message_one": "{{count}} violation acknowledged",
-        "message_other": "{{count}} violations acknowledged"
+        "title": "Порушення підтверджено",
+        "message_one": "{{count}} порушення підтверджено",
+        "message_other": "{{count}} порушення підтвердженні"
       },
       "violationsDismissed": {
-        "title": "Violations Dismissed",
-        "message_one": "{{count}} violation dismissed",
-        "message_other": "{{count}} violations dismissed"
+        "title": "Порушення відхилено",
+        "message_one": "{{count}} порушення відхилено",
+        "message_other": "{{count}} порушення відхилені"
       },
       "apiKeyGenerated": {
-        "title": "API Key Generated",
-        "message": "Your new API key is ready to use"
+        "title": "API-ключ згенеровано",
+        "message": "Ваш новий API-ключ готовий до використання"
       },
       "mobileAccessEnabled": {
-        "title": "Mobile Access Enabled",
-        "message": "Scan the QR code with the Tracearr mobile app to connect"
+        "title": "Мобільний доступ увімкнено",
+        "message": "Відскануйте QR-код за допомогою мобільного додатку Tracearr для підключення"
       },
       "mobileAccessDisabled": {
-        "title": "Mobile Access Disabled",
-        "message": "All mobile sessions have been revoked"
+        "title": "Мобільний доступ вимкнено",
+        "message": "Усі мобільні сеанси були відкликані"
       },
       "pairTokenGenerated": {
         "title": "Pair Token Generated",
         "message": "Scan the QR code with your mobile device to pair"
       },
       "displayNameUpdated": {
-        "title": "Display Name Updated"
+        "title": "Відображуване ім'я оновлено"
       },
       "trustScoresReset": {
         "title": "Trust Scores Reset",
@@ -174,12 +174,12 @@
       "sessionsRevokeFailed": "Failed to revoke sessions",
       "displayNameUpdateFailed": "Failed to update display name",
       "trustScoresResetFailed": "Failed to reset trust scores",
-      "routingUpdateFailed": "Failed to update routing",
-      "clipboardFailed": "Failed to copy to clipboard",
+      "routingUpdateFailed": "Не вдалося оновити маршрутизацію",
+      "clipboardFailed": "Не вдалося скопіювати в буфер обміну",
       "plexUnlinkFailed": "Failed to unlink Plex account",
-      "agentAddFailed": "Failed to add agent",
-      "agentUpdateFailed": "Failed to update agent",
-      "agentRemoveFailed": "Failed to remove agent",
+      "agentAddFailed": "Не вдалося додати агента",
+      "agentUpdateFailed": "Не вдалося оновити агента",
+      "agentRemoveFailed": "Не вдалося видалити агента",
       "agentTestFailed": "Test failed",
       "jobAlreadyRunning": "Job already running",
       "jobStartFailed": "Failed to start job",
