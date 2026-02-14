@@ -228,7 +228,7 @@
     "error_other": "{{count}} помилок"
   },
   "messages": {
-    "noChangesDetected": "No changes detected"
+    "noChangesDetected": "Змін не виявлено"
   },
   "relativeTime": {
     "justNow": "Щойно",
