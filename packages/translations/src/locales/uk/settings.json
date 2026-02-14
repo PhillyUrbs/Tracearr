@@ -19,9 +19,9 @@
     "localAccount": "Локальний обліковий запис",
     "plexAccount": "Обліковий запис Plex",
     "jellyfinAccount": "Обліковий запис Jellyfin",
-    "language": "Language",
+    "language": "Мова",
     "languageDescription": "Choose your preferred display language.",
-    "helpTranslate": "Help translate Tracearr"
+    "helpTranslate": "Допоможіть перекласти Tracearr"
   },
   "servers": {
     "title": "Підключені сервери",
@@ -38,7 +38,7 @@
     "title": "Мобільний додаток",
     "pairDevice": "Підключити пристрій",
     "connectedDevices": "Підключені пристрої",
-    "generateToken": "Generate Pair Token",
+    "generateToken": "Згенерувати парний токен",
     "scanQrCode": "Проскануйте QR-код",
     "tokenExpires": "Термін дії токена закінчується через {{time}}",
     "noDevices": "Немає підключених пристроїв",
@@ -54,7 +54,7 @@
   },
   "advanced": {
     "title": "Розширені налаштування",
-    "basePath": "Base Path",
+    "basePath": "Основний шлях",
     "externalUrl": "Зовнішня URL-адреса",
     "trustProxy": "Trust Proxy Headers",
     "reverseProxy": "Reverse Proxy",
