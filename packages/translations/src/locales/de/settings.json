@@ -21,7 +21,11 @@
     "jellyfinAccount": "Jellyfin-Konto",
     "language": "Sprache",
     "languageDescription": "Wählen Sie Ihre bevorzugte Anzeigesprache.",
-    "helpTranslate": "Hilf bei der Übersetzung von Tracearr"
+    "helpTranslate": "Hilf bei der Übersetzung von Tracearr",
+    "timeFormat": "Time Format",
+    "timeFormatDescription": "Choose how times are displayed.",
+    "timeFormat12h": "12-hour (1:30 PM)",
+    "timeFormat24h": "24-hour (13:30)"
   },
   "servers": {
     "title": "Verbundene Server",
