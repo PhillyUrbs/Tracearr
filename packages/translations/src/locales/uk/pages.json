@@ -11,7 +11,7 @@
     "completeInPopup": "Завершіть вхід у спливаючому вікні",
     "reopenPlexLogin": "Знову відкрити вхід до Plex",
     "emailPlaceholder": "your@email.com",
-    "displayNamePlaceholder": "Choose a display name",
+    "displayNamePlaceholder": "Виберіть ім'я для відображення",
     "passwordPlaceholder": "Щонайменше 8 символів",
     "yourPasswordPlaceholder": "Ваш пароль",
     "jellyfinUsernamePlaceholder": "Ваше ім'я користувача Jellyfin",
@@ -56,7 +56,7 @@
     "resetTrustScore": "Скинути рейтинг довіри",
     "resetTrustScoreTitle_one": "Скинути рейтинг довіри для {{count}} користувача",
     "resetTrustScoreTitle_other": "Скинути рейтинг довіри для {{count}} користувачів",
-    "resetTrustScoreConfirm": "Are you sure you want to reset the trust score to 100? This action cannot be undone."
+    "resetTrustScoreConfirm": "Ви впевнені, що хочете скинути рейтинг довіри до 100? Цю дію не можна скасувати."
   },
   "userDetail": {
     "backToUsers": "Назад до користувачів",
@@ -79,7 +79,7 @@
     "description": "Переглядайте всі потокові сесії з потужною фільтрацією",
     "loadingMore": "Loading more...",
     "scrollForMore": "Scroll for more",
-    "showingAllResults": "Showing all {{total}} results",
+    "showingAllResults": "Показано всі {{total}} результати",
     "deleteSession_one": "Видалити {{count}} сеанс",
     "deleteSession_other": "Видалити {{count}} сеансів",
     "deleteSessionsConfirm": "Ви впевнені, що хочете видалити? Цю дію не можна скасувати."
@@ -88,7 +88,7 @@
     "title": "Бібліотека",
     "description": "Найкращі фільми та серіали на вашому сервері",
     "topMovies": "Найкращі фільми",
-    "topShows": "Top TV Shows",
+    "topShows": "Найкращі серіали",
     "noMoviePlays": "За цей період відтворень фільмів не має",
     "noShowPlays": "За цей період відтворень серіалів не має"
   },
