@@ -21,7 +21,11 @@
     "jellyfinAccount": "Обліковий запис Jellyfin",
     "language": "Мова",
     "languageDescription": "Choose your preferred display language.",
-    "helpTranslate": "Допоможіть перекласти Tracearr"
+    "helpTranslate": "Допоможіть перекласти Tracearr",
+    "timeFormat": "Time Format",
+    "timeFormatDescription": "Choose how times are displayed.",
+    "timeFormat12h": "12-hour (1:30 PM)",
+    "timeFormat24h": "24-hour (13:30)"
   },
   "servers": {
     "title": "Підключені сервери",
