@@ -1,0 +1,38 @@
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature! Please keep it to one idea per request.
+
+        **Before submitting:** Search [existing requests](https://github.com/connorgallopo/Tracearr/discussions/categories/feature-requests) to avoid duplicates.
+
+  - type: textarea
+    id: feature
+    attributes:
+      label: Describe the feature
+      description: What do you want, and why? Be as specific as you'd like.
+      placeholder: |
+        What would it do?
+
+        What problem does it solve?
+
+        How would it work from a user's perspective?
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples or references
+      description: Screenshots, mockups, or links to similar features in other apps (Tautulli, Overseerr, etc.)
+      placeholder: "Similar to how Tautulli does..."
+
+  - type: checkboxes
+    id: platforms
+    attributes:
+      label: Platform
+      options:
+        - label: Web Dashboard
+        - label: Mobile App
+        - label: Server / API
