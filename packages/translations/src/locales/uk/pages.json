@@ -168,7 +168,7 @@
     "impossibleTravelDesc": "Detect when a user streams from locations too far apart in a short time",
     "simultaneousLocations": "Simultaneous Locations",
     "simultaneousLocationsDesc": "Detect when a user streams from multiple distant locations at once",
-    "deviceVelocity": "Device Velocity",
+    "deviceVelocity": "Швидкість пристрою",
     "deviceVelocityDesc": "Detect when a user connects from too many IPs in a time window",
     "concurrentStreams": "Concurrent Streams",
     "concurrentStreamsDesc": "Limit the number of simultaneous streams per user",
