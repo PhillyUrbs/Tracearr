@@ -337,9 +337,21 @@ describe('Helper Functions', () => {
 describe('Session Behavior Evaluators', () => {
   describe('concurrent_streams', () => {
     it('counts active sessions for user', async () => {
-      const session1 = createMockSession({ id: 's1', serverUserId: 'user-1' });
-      const session2 = createMockSession({ id: 's2', serverUserId: 'user-1' });
-      const session3 = createMockSession({ id: 's3', serverUserId: 'user-2' });
+      const session1 = createMockSession({
+        id: 's1',
+        serverUserId: 'user-1',
+        deviceId: 'device-1',
+      });
+      const session2 = createMockSession({
+        id: 's2',
+        serverUserId: 'user-1',
+        deviceId: 'device-2',
+      }); // Different device
+      const session3 = createMockSession({
+        id: 's3',
+        serverUserId: 'user-2',
+        deviceId: 'device-3',
+      });
 
       const ctx = createTestContext({
         session: session1,
@@ -403,12 +415,14 @@ describe('Session Behavior Evaluators', () => {
         serverUserId: 'user-1',
         geoLat: 40.7128,
         geoLon: -74.006,
+        deviceId: 'device-1',
       });
       const session2 = createMockSession({
         id: 's2',
         serverUserId: 'user-1',
         geoLat: 34.0522,
         geoLon: -118.2437,
+        deviceId: 'device-2', // Different device
       });
 
       const ctx = createTestContext({
@@ -451,13 +465,14 @@ describe('Session Behavior Evaluators', () => {
         geoLon: -74.006,
       });
 
-      // Boston (~350km from NYC)
+      // Boston (~350km from NYC) - different device to test travel detection
       const previousSession = createMockSession({
         id: 's2',
         serverUserId: 'user-1',
         startedAt: twoHoursAgo,
         geoLat: 42.3601,
         geoLon: -71.0589,
+        deviceId: 'device-2', // Different device - same device sessions are excluded by default
       });
 
       const ctx = createTestContext({
@@ -518,6 +533,7 @@ describe('Session Behavior Evaluators', () => {
         startedAt: now,
         geoLat: 34.0522,
         geoLon: -118.2437,
+        deviceId: 'device-2', // Different device - same device sessions are excluded by default
       });
 
       const ctx = createTestContext({
@@ -1369,6 +1385,47 @@ describe('User Attribute Evaluators', () => {
           )
         )
       ).toBe(true);
+    });
+
+    it('returns identityName as actual when available', () => {
+      const ctx = createTestContext({
+        serverUser: createMockServerUser({
+          id: 'user-123',
+          username: 'plexuser',
+          identityName: 'John Doe',
+        }),
+      });
+
+      const evaluator = evaluatorRegistry.user_id;
+      const result = evaluator(
+        ctx,
+        createCondition({ field: 'user_id', operator: 'eq', value: 'user-123' })
+      ) as EvaluatorResult; // user_id evaluator is synchronous
+
+      // Should use identityName for display (follows identityName ?? username pattern)
+      expect(result.actual).toBe('John Doe');
+      // Should include userId in details for debugging
+      expect(result.details).toEqual({ userId: 'user-123' });
+    });
+
+    it('falls back to username when identityName is null', () => {
+      const ctx = createTestContext({
+        serverUser: createMockServerUser({
+          id: 'user-456',
+          username: 'plexuser',
+          identityName: null,
+        }),
+      });
+
+      const evaluator = evaluatorRegistry.user_id;
+      const result = evaluator(
+        ctx,
+        createCondition({ field: 'user_id', operator: 'eq', value: 'user-456' })
+      ) as EvaluatorResult; // user_id evaluator is synchronous
+
+      // Should fall back to username when identityName is null
+      expect(result.actual).toBe('plexuser');
+      expect(result.details).toEqual({ userId: 'user-456' });
     });
   });
 

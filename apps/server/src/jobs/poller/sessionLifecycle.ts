@@ -586,6 +586,7 @@ export async function createSessionWithRulesAtomic(
             lastActivityAt: serverUser.lastActivityAt,
             createdAt: serverUser.createdAt,
             updatedAt: new Date(),
+            identityName: serverUser.identityName,
           };
 
           const baseContext: Omit<EvaluationContext, 'rule'> = {
@@ -1117,6 +1118,7 @@ export async function reEvaluateRulesOnTranscodeChange(
     lastActivityAt: serverUser.lastActivityAt,
     createdAt: serverUser.createdAt,
     updatedAt: new Date(),
+    identityName: serverUser.identityName,
   };
 
   const baseContext: Omit<EvaluationContext, 'rule'> = {

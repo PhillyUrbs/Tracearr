@@ -164,7 +164,7 @@ const evaluateConcurrentStreams: ConditionEvaluator = (
   condition: Condition
 ): EvaluatorResult => {
   const { session, activeSessions, serverUser } = context;
-  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? true;
 
   // Count active sessions for this user (excluding current session by reference to avoid double-count)
   let userActiveSessions = activeSessions.filter(
@@ -194,7 +194,7 @@ const evaluateActiveSessionDistanceKm: ConditionEvaluator = (
   condition: Condition
 ): EvaluatorResult => {
   const { session, activeSessions, serverUser } = context;
-  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? true;
 
   // Get other active sessions for this user (excluding current session by reference)
   let otherSessions = activeSessions.filter(
@@ -248,7 +248,7 @@ const evaluateTravelSpeedKmh: ConditionEvaluator = (
   condition: Condition
 ): EvaluatorResult => {
   const { session, recentSessions, serverUser } = context;
-  const excludeSameDevice = condition.params?.exclude_same_device ?? false;
+  const excludeSameDevice = condition.params?.exclude_same_device ?? true;
 
   // Get previous sessions for this user (excluding current session by reference)
   let previousSessions = recentSessions
@@ -580,10 +580,14 @@ const evaluateUserId: ConditionEvaluator = (
   condition: Condition
 ): EvaluatorResult => {
   const { serverUser } = context;
+  const displayName = serverUser.identityName ?? serverUser.username;
 
   return {
     matched: compare(serverUser.id, condition.operator, condition.value),
-    actual: serverUser.id,
+    actual: displayName,
+    details: {
+      userId: serverUser.id,
+    },
   };
 };
 

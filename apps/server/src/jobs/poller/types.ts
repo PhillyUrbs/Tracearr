@@ -368,6 +368,7 @@ export interface TranscodeReEvalInput {
     id: string;
     username: string;
     thumbUrl: string | null;
+    identityName: string | null;
     trustScore: number;
     sessionCount: number;
     lastActivityAt: Date | null;

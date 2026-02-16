@@ -77,6 +77,7 @@ export interface ServerUser {
   lastActivityAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  identityName?: string | null;
 }
 
 // Server User with identity info - returned by /users API endpoints

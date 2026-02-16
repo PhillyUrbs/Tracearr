@@ -273,6 +273,7 @@ function createDefaultInput(overrides: Partial<TranscodeReEvalInput> = {}): Tran
       id: 'user-1',
       username: 'testuser',
       thumbUrl: null,
+      identityName: null,
       trustScore: 100,
       sessionCount: 10,
       lastActivityAt: new Date(),

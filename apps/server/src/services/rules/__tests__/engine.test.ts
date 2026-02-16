@@ -527,10 +527,20 @@ describe('evaluateRule', () => {
       // Desktop with 2 streams should match
       const desktopCtx = createTestContext(rule, {
         serverUser: createMockServerUser({ id: 'user-1' }),
-        session: createMockSession({ device: 'Chrome', platform: 'Windows' }),
+        session: createMockSession({ device: 'Chrome', platform: 'Windows', deviceId: 'device-1' }),
         activeSessions: [
-          createMockSession({ serverUserId: 'user-1', device: 'Chrome', platform: 'Windows' }),
-          createMockSession({ serverUserId: 'user-1', device: 'Chrome', platform: 'Windows' }),
+          createMockSession({
+            serverUserId: 'user-1',
+            device: 'Chrome',
+            platform: 'Windows',
+            deviceId: 'device-1',
+          }),
+          createMockSession({
+            serverUserId: 'user-1',
+            device: 'Chrome',
+            platform: 'Windows',
+            deviceId: 'device-2',
+          }),
         ],
       });
 
@@ -539,10 +549,20 @@ describe('evaluateRule', () => {
       // Mobile with 2 streams should not match (bypassed)
       const mobileCtx = createTestContext(rule, {
         serverUser: createMockServerUser({ id: 'user-1' }),
-        session: createMockSession({ device: 'iPhone', platform: 'iOS' }),
+        session: createMockSession({ device: 'iPhone', platform: 'iOS', deviceId: 'device-3' }),
         activeSessions: [
-          createMockSession({ serverUserId: 'user-1', device: 'iPhone', platform: 'iOS' }),
-          createMockSession({ serverUserId: 'user-1', device: 'iPhone', platform: 'iOS' }),
+          createMockSession({
+            serverUserId: 'user-1',
+            device: 'iPhone',
+            platform: 'iOS',
+            deviceId: 'device-3',
+          }),
+          createMockSession({
+            serverUserId: 'user-1',
+            device: 'iPhone',
+            platform: 'iOS',
+            deviceId: 'device-4',
+          }),
         ],
       });
 

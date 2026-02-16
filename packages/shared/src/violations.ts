@@ -325,8 +325,16 @@ export function formatEvidenceDescription(
       const label = CONDITION_FIELD_LABELS[cond.field] ?? cond.field;
       const actual = formatConditionActual(cond, unitSystem);
       const op = OPERATOR_LABELS[cond.operator] ?? cond.operator;
-      const threshold = String(cond.threshold);
-      parts.push(`${label}: ${actual} (${op} ${threshold})`);
+
+      if (cond.field === 'user_id' && (cond.operator === 'in' || cond.operator === 'not_in')) {
+        const userIds = Array.isArray(cond.threshold) ? cond.threshold : [];
+        const count = userIds.length;
+        const excludedText = count === 1 ? '1 excluded user' : `${count} excluded users`;
+        parts.push(`${label}: ${actual} (${op} ${excludedText})`);
+      } else {
+        const threshold = String(cond.threshold);
+        parts.push(`${label}: ${actual} (${op} ${threshold})`);
+      }
     }
   }
 

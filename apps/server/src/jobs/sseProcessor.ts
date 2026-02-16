@@ -782,12 +782,14 @@ async function updateExistingSession(
             id: serverUsers.id,
             username: serverUsers.username,
             thumbUrl: serverUsers.thumbUrl,
+            identityName: users.name,
             trustScore: serverUsers.trustScore,
             sessionCount: serverUsers.sessionCount,
             lastActivityAt: serverUsers.lastActivityAt,
             createdAt: serverUsers.createdAt,
           })
           .from(serverUsers)
+          .innerJoin(users, eq(serverUsers.userId, users.id))
           .where(eq(serverUsers.id, existingSession.serverUserId))
           .limit(1);
 
