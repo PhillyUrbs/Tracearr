@@ -77,7 +77,7 @@
   "history": {
     "title": "Історія",
     "description": "Переглядайте всі потокові сесії з потужною фільтрацією",
-    "loadingMore": "Loading more...",
+    "loadingMore": "Завантажується більше...",
     "scrollForMore": "Scroll for more",
     "showingAllResults": "Показано всі {{total}} результати",
     "deleteSession_one": "Видалити {{count}} сеанс",
@@ -163,7 +163,7 @@
     "enable": "Увімкнути",
     "disable": "Вимкнути",
     "noRulesConfigured": "Немає налаштованих правил",
-    "createFirstRule": "Create your first detection rule to start monitoring for account sharing.",
+    "createFirstRule": "Створіть своє перше правило виявлення, щоб розпочати моніторинг спільного доступу до облікового запису.",
     "impossibleTravel": "Неможлива подорож",
     "impossibleTravelDesc": "Detect when a user streams from locations too far apart in a short time",
     "simultaneousLocations": "Simultaneous Locations",
