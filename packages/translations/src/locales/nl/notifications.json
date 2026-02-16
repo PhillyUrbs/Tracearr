@@ -3,22 +3,22 @@
     "success": {
       "serverAdded": {
         "title": "Server Added",
-        "message": "{{name}} has been connected successfully"
+        "message": "{{name}} is succesvol verbonden"
       },
       "serverRemoved": {
-        "title": "Server Removed",
-        "message": "The server has been removed successfully"
+        "title": "Server verwijderd",
+        "message": "De server is succesvol verwijderd"
       },
       "serverSynced": {
-        "title": "Server Synced",
-        "message": "Server data has been synchronized"
+        "title": "Server gesynchroniseerd",
+        "message": "Servergegevens zijn gesynchroniseerd"
       },
       "settingsUpdated": {
-        "title": "Settings Updated",
-        "message": "Your settings have been saved"
+        "title": "Instellingen bijgewerkt",
+        "message": "Je instellingen zijn opgeslagen"
       },
       "tokenCopied": {
-        "title": "Token Copied",
+        "title": "Token gekopieerd",
         "message": "Pair token copied to clipboard"
       },
       "violationAcknowledged": {
