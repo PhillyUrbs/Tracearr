@@ -72,7 +72,7 @@
     "disconnected": "Відключено",
     "saving": "Збереження...",
     "deleting": "Видалення...",
-    "dismissing": "Dismissing...",
+    "dismissing": "Відхилення...",
     "acknowledging": "Підтверджено..."
   },
   "playback": {
@@ -84,9 +84,9 @@
     "transcode": "Перекодування"
   },
   "severity": {
-    "low": "Low",
+    "low": "Низька",
     "warning": "Попередження",
-    "high": "High"
+    "high": "Висока"
   },
   "time": {
     "now": "Зараз",
@@ -131,7 +131,7 @@
     "unknown": "Невідомо",
     "never": "Ніколи",
     "when": "Коли",
-    "severity": "Severity",
+    "severity": "Серйозність",
     "type": "Тип",
     "reason": "Причина",
     "actions": "Дії",
@@ -175,9 +175,9 @@
   "validation": {
     "required": "Це поле обовʼязкове",
     "invalidEmail": "Будь ласка, введіть дійсну адресу електронної пошти",
-    "invalidUrl": "Please enter a valid URL",
-    "minLength": "Must be at least {{min}} characters",
-    "maxLength": "Must be at most {{max}} characters"
+    "invalidUrl": "Будь ласка, введіть вірну URL-адресу",
+    "minLength": "Має бути щонайменше {{min}} символів",
+    "maxLength": "Має містити не більше {{max}} символів"
   },
   "errors": {
     "generic": "Сталася помилка",
@@ -196,16 +196,16 @@
     "unexpectedError": "Сталася неочікувана помилка. Спробуйте ще раз.",
     "failedToLoad": "Не вдалося завантажити {{item}}",
     "connectionFailed": "Не вдалося підключитися",
-    "connectionTimedOut": "Connection timed out. Check your server URL.",
-    "cannotReachServer": "Cannot reach server. Check URL and network connection."
+    "connectionTimedOut": "Час очікування з’єднання минув. Перевірте URL-адресу вашого сервера.",
+    "cannotReachServer": "Не вдалося зв'язатися з сервером. Перевірте URL-адресу та підключення до мережі."
   },
   "count": {
     "user_one": "{{count}} користувач",
     "user_other": "{{count}} користувачів",
     "session_one": "{{count}} сеанс",
     "session_other": "{{count}} сеансів",
-    "stream_one": "{{count}} stream",
-    "stream_other": "{{count}} streams",
+    "stream_one": "{{count}} потік",
+    "stream_other": "{{count}} потоки",
     "server_one": "{{count}} сервер",
     "server_other": "{{count}} сервери",
     "rule_one": "{{count}} правило",
