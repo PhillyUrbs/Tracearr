@@ -20,9 +20,9 @@
     "plexAccount": "Обліковий запис Plex",
     "jellyfinAccount": "Обліковий запис Jellyfin",
     "language": "Мова",
-    "languageDescription": "Choose your preferred display language.",
+    "languageDescription": "Виберіть бажану мову.",
     "helpTranslate": "Допоможіть перекласти Tracearr",
-    "timeFormat": "Time Format",
+    "timeFormat": "Формат часу",
     "timeFormatDescription": "Choose how times are displayed.",
     "timeFormat12h": "12-hour (1:30 PM)",
     "timeFormat24h": "24-hour (13:30)"
@@ -111,14 +111,14 @@
     "stableRelease": "Стабільна версія",
     "betaUpdate": "Бета-оновлення",
     "newVersion": "Нова версія",
-    "versionAvailable": "{{version}} available"
+    "versionAvailable": "{{version}} доступно"
   },
   "serverHealth": {
     "unreachable": "{{serverName}} недоступний",
-    "multipleUnreachable": "{{count}} servers unreachable: {{serverNames}}"
+    "multipleUnreachable": "{{count}} сервери недоступні: {{serverNames}}"
   },
   "ipWarning": {
     "message": "All users appear to be using the same IP address or local network IPs. This may affect rule-based logic for location or IP addresses.",
-    "acknowledge": "Got it"
+    "acknowledge": "Зрозуміло"
   }
 }
