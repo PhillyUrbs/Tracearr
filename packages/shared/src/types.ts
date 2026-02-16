@@ -1085,6 +1085,7 @@ export interface UserFilterOption {
   id: string;
   username: string;
   thumbUrl: string | null;
+  serverId: string;
   identityName: string | null;
 }
 

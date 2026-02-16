@@ -62,36 +62,6 @@ function formatMediaTitle(session: ActiveSession): string {
 }
 
 /**
- * Build full poster URL for rich notifications
- * Returns null if externalUrl is not configured or thumbPath is missing
- */
-async function _buildPosterUrl(session: ActiveSession): Promise<string | null> {
-  const { thumbPath, serverId } = session;
-
-  // Need both thumbPath and serverId
-  if (!thumbPath || !serverId) {
-    return null;
-  }
-
-  // Get external URL from settings
-  const networkSettings = await getNetworkSettings();
-  const { externalUrl } = networkSettings;
-
-  // External URL must be configured for rich notifications
-  if (!externalUrl) {
-    return null;
-  }
-
-  // Build the full URL using image proxy
-  // Use smaller dimensions for notification thumbnails
-  const width = 150;
-  const height = 225;
-  const encodedPath = encodeURIComponent(thumbPath);
-
-  return `${externalUrl}/api/v1/images/proxy?server=${serverId}&url=${encodedPath}&width=${width}&height=${height}&fallback=poster`;
-}
-
-/**
  * Session with preferences for filtering
  */
 interface SessionWithPrefs {
@@ -165,11 +135,11 @@ function buildPushMessage(
   }
 
   // Add rich notification image if URL is HTTPS
+  // Note: Requires Notification Service Extension on iOS to display images
   if (notification.imageUrl?.startsWith('https://')) {
-    // Note: 'richContent' property holds the image URL in Expo SDK
-    // Using type assertion since expo-server-sdk types may not include newer properties
-    (message as ExpoPushMessage & { richContent?: { url: string } }).richContent = {
-      url: notification.imageUrl,
+    // Expo richContent format expects { image: url } not { url: url }
+    (message as ExpoPushMessage & { richContent?: { image: string } }).richContent = {
+      image: notification.imageUrl,
     };
   }
 

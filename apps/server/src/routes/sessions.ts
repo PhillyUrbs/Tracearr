@@ -1052,6 +1052,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
               su.id,
               su.username,
               su.thumb_url,
+              su.server_id,
               u.name as identity_name
             FROM sessions s
             JOIN server_users su ON su.id = s.server_user_id
@@ -1070,12 +1071,14 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
         id: string;
         username: string;
         thumb_url: string | null;
+        server_id: string;
         identity_name: string | null;
       }[]
     ).map((row) => ({
       id: row.id,
       username: row.username,
       thumbUrl: row.thumb_url,
+      serverId: row.server_id,
       identityName: row.identity_name,
     }));
 
