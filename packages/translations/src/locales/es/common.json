@@ -208,8 +208,8 @@
     "stream_other": "{{count}} Transmisiones",
     "server_one": "Servidor {{count}}",
     "server_other": "Servidores {{count}}",
-    "rule_one": "{{count}} rule",
-    "rule_other": "{{count}} rules",
+    "rule_one": "{{count}} regla",
+    "rule_other": "{{count}} reglas",
     "violation_one": "{{count}} violación",
     "violation_other": "{{count}} violaciones",
     "item_one": "{{count}} artículo",
@@ -219,13 +219,13 @@
     "selected_one": "{{count}} seleccionado",
     "selected_other": "{{count}} seleccionados",
     "usersAdded_one": "{{count}} seleccionado",
-    "usersAdded_other": "{{count}} users added",
-    "usersUpdated_one": "{{count}} user updated",
-    "usersUpdated_other": "{{count}} users updated",
-    "library_one": "{{count}} library",
-    "library_other": "{{count}} libraries",
+    "usersAdded_other": "{{count}} usuario agregado",
+    "usersUpdated_one": "{{count}} usuario actualizado",
+    "usersUpdated_other": "{{count}} usuarios actualizados",
+    "library_one": "{{count}} biblioteca",
+    "library_other": "{{count}} bibliotecas",
     "error_one": "{{count}} error",
-    "error_other": "{{count}} errors"
+    "error_other": "{{count}} errores"
   },
   "messages": {
     "noChangesDetected": "No se detectaron cambios"
