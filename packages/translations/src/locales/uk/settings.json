@@ -58,7 +58,6 @@
   },
   "advanced": {
     "title": "Розширені налаштування",
-    "basePath": "Основний шлях",
     "externalUrl": "Зовнішня URL-адреса",
     "trustProxy": "Trust Proxy Headers",
     "reverseProxy": "Reverse Proxy",
