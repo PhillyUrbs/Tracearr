@@ -7,7 +7,7 @@
     "import": "Importieren",
     "advanced": "Erweitert",
     "jobs": "Jobs",
-    "accessControl": "Zugangs kontrolle"
+    "accessControl": "Zugangskontrolle"
   },
   "general": {
     "title": "Allgemeine Einstellungen",
@@ -22,10 +22,10 @@
     "language": "Sprache",
     "languageDescription": "Wählen Sie Ihre bevorzugte Anzeigesprache.",
     "helpTranslate": "Hilf bei der Übersetzung von Tracearr",
-    "timeFormat": "Time Format",
-    "timeFormatDescription": "Choose how times are displayed.",
-    "timeFormat12h": "12-hour (1:30 PM)",
-    "timeFormat24h": "24-hour (13:30)"
+    "timeFormat": "Zeitformat",
+    "timeFormatDescription": "Wählen Sie, wie die Uhrzeit angezeigt wird.",
+    "timeFormat12h": "12-Stunden (1:30 Uhr)",
+    "timeFormat24h": "24 Stunden (13:30)"
   },
   "servers": {
     "title": "Verbundene Server",
