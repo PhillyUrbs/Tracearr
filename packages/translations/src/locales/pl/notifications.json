@@ -2,43 +2,43 @@
   "toast": {
     "success": {
       "serverAdded": {
-        "title": "Server Added",
-        "message": "{{name}} has been connected successfully"
+        "title": "Serwer dodany",
+        "message": "{{name}} został połączony pomyślnie"
       },
       "serverRemoved": {
-        "title": "Server Removed",
-        "message": "The server has been removed successfully"
+        "title": "Serwer usunięty",
+        "message": "Serwer został pomyślnie usunięty."
       },
       "serverSynced": {
-        "title": "Server Synced",
-        "message": "Server data has been synchronized"
+        "title": "Serwer zsynchronizowany",
+        "message": "Dane serwera zostały zsynchronizowane"
       },
       "settingsUpdated": {
-        "title": "Settings Updated",
-        "message": "Your settings have been saved"
+        "title": "Zaktualizowano ustawienia",
+        "message": "Ustawienia zostały zapisane"
       },
       "tokenCopied": {
-        "title": "Token Copied",
-        "message": "Pair token copied to clipboard"
+        "title": "Token skopiowany",
+        "message": "Skopiowano token do schowka"
       },
       "violationAcknowledged": {
-        "title": "Violation Acknowledged",
-        "message": "The violation has been marked as acknowledged"
+        "title": "Potwierdzono naruszenie",
+        "message": "Naruszenie zostało oznaczone jako potwierdzone"
       },
       "violationDismissed": {
-        "title": "Violation Dismissed",
-        "message": "The violation has been dismissed"
+        "title": "Naruszenie zostało odrzucone",
+        "message": "Naruszenie zostało odrzucone"
       },
       "deviceRemoved": {
-        "title": "Device Removed",
-        "message": "The device has been disconnected"
+        "title": "Urządzenie usunięte",
+        "message": "Urządzenie zostało rozłączone."
       },
       "deviceRenamed": {
-        "title": "Device Renamed",
-        "message": "The device name has been updated"
+        "title": "Nazwa urządzenia zmieniona",
+        "message": "Zaktualizowano nazwę urządzenia"
       },
       "sessionsRevoked": {
-        "title": "Sessions Revoked",
+        "title": "Sesje unieważnione",
         "message": "All mobile sessions have been revoked"
       },
       "loggedIn": {
