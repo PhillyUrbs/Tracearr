@@ -205,6 +205,12 @@ export const REDIS_KEYS = {
   // Rule cooldowns
   RULE_COOLDOWN: (ruleId: string, targetId: string) =>
     `${_redisPrefix}tracearr:rule:cooldown:${ruleId}:${targetId}`,
+  // Session write retry queue (for failed DB writes)
+  SESSION_WRITE_RETRY: (sessionId: string) =>
+    `${_redisPrefix}tracearr:session:write-retry:${sessionId}`,
+  get SESSION_WRITE_RETRY_SET() {
+    return `${_redisPrefix}tracearr:session:write-retry:pending`;
+  },
 };
 
 // Cache TTLs in seconds
@@ -691,6 +697,19 @@ export const SESSION_LIMITS = {
   CONTINUED_SESSION_THRESHOLD_MS: 60 * 1000,
   // Stale session sweep interval - how often to check for stale sessions (1 minute)
   STALE_SWEEP_INTERVAL_MS: 60 * 1000,
+} as const;
+
+/**
+ * Session write retry configuration.
+ * Used when DB writes fail during session stop.
+ */
+export const SESSION_WRITE_RETRY = {
+  /** Number of immediate retries before queueing */
+  IMMEDIATE_RETRIES: 3,
+  /** Base delay for exponential backoff (ms) */
+  IMMEDIATE_BACKOFF_MS: 50,
+  /** Maximum total attempts before giving up */
+  MAX_TOTAL_ATTEMPTS: 5,
 } as const;
 
 // ============================================================================
