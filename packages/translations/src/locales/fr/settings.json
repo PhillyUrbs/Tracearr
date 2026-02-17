@@ -58,7 +58,6 @@
   },
   "advanced": {
     "title": "Réglages avancés",
-    "basePath": "Chemin de base",
     "externalUrl": "URL externe",
     "trustProxy": "En-têtes de confiance du Proxy",
     "reverseProxy": "Proxy inversé",
