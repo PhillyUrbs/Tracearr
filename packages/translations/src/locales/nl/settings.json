@@ -58,7 +58,6 @@
   },
   "advanced": {
     "title": "Geavanceerde instellingen",
-    "basePath": "Basispad",
     "externalUrl": "Externe URL",
     "trustProxy": "Proxy-headers vertrouwen",
     "reverseProxy": "Reverse proxy",
