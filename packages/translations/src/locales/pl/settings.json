@@ -58,7 +58,6 @@
   },
   "advanced": {
     "title": "Ustawienia zaawansowane",
-    "basePath": "Ścieżka podstawowa",
     "externalUrl": "Zewnętrzny adres URL",
     "trustProxy": "Zaufaj nagłówkom serwera proxy",
     "reverseProxy": "Odwrócone Proxy",
