@@ -494,6 +494,19 @@ async function processServerSessions(
           ratingKey: processed.ratingKey,
         });
         if (!existingSession) {
+          // Check if SSE has a pending session awaiting confirmation
+          // Pending sessions exist in cache but not DB until 30s confirmation threshold
+          if (cacheService) {
+            const pendingSession = await cacheService.getPendingSession(
+              server.id,
+              processed.sessionKey
+            );
+            if (pendingSession) {
+              // SSE is handling this session - skip to avoid duplicate
+              continue;
+            }
+          }
+
           // Issue #120: Stale cache entry - session key is in Redis but no active session exists in DB
           // Remove stale cache entry and create session with proper locking to prevent duplicates.
           console.log(
