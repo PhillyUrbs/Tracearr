@@ -107,6 +107,37 @@ describe('frontend: notification agent imagePaths use BASE_URL', () => {
 });
 
 // ==========================================================================
+// Frontend: BASE_URL usage must not add leading slash (causes // bug)
+// ==========================================================================
+describe('frontend: BASE_URL paths must not start with /', () => {
+  // BASE_URL already ends with / (e.g., "/" or "/tracearr/")
+  // Adding another / creates protocol-relative URLs like "//api/..."
+  // Pattern: ${BASE_URL}/ where the / comes after the closing brace
+  const DOUBLE_SLASH_PATTERN = /\$\{BASE_URL\}\//g;
+
+  const files = collectFiles(WEB_SRC);
+
+  it('no ${BASE_URL}/ patterns (path should not start with /)', () => {
+    const violations: string[] = [];
+
+    for (const file of files) {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i]!;
+        if (DOUBLE_SLASH_PATTERN.test(line)) {
+          const rel = relative(PROJECT_ROOT, file);
+          violations.push(`${rel}:${i + 1}: ${line.trim()}`);
+        }
+        DOUBLE_SLASH_PATTERN.lastIndex = 0;
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+});
+
+// ==========================================================================
 // Server: no hardcoded redirect paths (outside of basePath-aware code)
 // ==========================================================================
 describe('server: redirects use BASE_PATH', () => {

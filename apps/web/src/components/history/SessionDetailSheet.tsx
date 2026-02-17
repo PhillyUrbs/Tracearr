@@ -39,7 +39,7 @@ import {
   Clapperboard,
 } from 'lucide-react';
 import { cn, getCountryName, getMediaDisplay } from '@/lib/utils';
-import { BASE_URL } from '@/lib/api';
+import { imageProxyUrl } from '@/lib/api';
 import { formatDuration } from '@/lib/formatters';
 import { getAvatarUrl } from '@/components/users/utils';
 import { useTheme } from '@/components/theme-provider';
@@ -214,7 +214,7 @@ export function SessionDetailSheet({ session, open, onOpenChange }: Props) {
 
   // Get poster URL if available
   const posterUrl = session.thumbPath
-    ? `${BASE_URL}/api/v1/images/proxy?server=${session.serverId}&url=${encodeURIComponent(session.thumbPath)}&width=120&height=180&fallback=poster`
+    ? imageProxyUrl(session.serverId, session.thumbPath, 120, 180, 'poster')
     : null;
 
   // Build location string

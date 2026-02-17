@@ -1,7 +1,7 @@
 /**
  * Shared utilities for user components
  */
-import { BASE_URL } from '@/lib/api';
+import { imageProxyUrl } from '@/lib/api';
 
 /**
  * Generate proxied avatar URL for user thumbnails
@@ -16,7 +16,7 @@ export function getAvatarUrl(
   if (thumbUrl.startsWith('http')) return thumbUrl;
   // Otherwise, proxy through our server
   if (!serverId) return null;
-  return `${BASE_URL}/api/v1/images/proxy?server=${serverId}&url=${encodeURIComponent(thumbUrl)}&width=${size}&height=${size}&fallback=avatar`;
+  return imageProxyUrl(serverId, thumbUrl, size, size, 'avatar');
 }
 
 /**

@@ -82,7 +82,7 @@ export type {
 import { API_BASE_PATH, getClientTimezone } from '@tracearr/shared';
 
 import { BASE_PATH } from '@/lib/basePath';
-export { BASE_PATH, BASE_URL } from '@/lib/basePath';
+export { BASE_PATH, BASE_URL, imageProxyUrl } from '@/lib/basePath';
 import { MAINTENANCE_EVENT } from '@/hooks/useMaintenanceMode';
 
 // Stats time range parameters

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { cn, getCountryName, getMediaDisplay } from '@/lib/utils';
-import { BASE_URL } from '@/lib/api';
+import { imageProxyUrl } from '@/lib/api';
 import { formatDuration } from '@/lib/formatters';
 import { useEstimatedProgress } from '@/hooks/useEstimatedProgress';
 import { useAuth } from '@/hooks/useAuth';
@@ -65,7 +65,7 @@ export function NowPlayingCard({ session, onClick }: NowPlayingCardProps) {
 
   // Build poster URL using image proxy
   const posterUrl = session.thumbPath
-    ? `${BASE_URL}/api/v1/images/proxy?server=${session.serverId}&url=${encodeURIComponent(session.thumbPath)}&width=200&height=300`
+    ? imageProxyUrl(session.serverId, session.thumbPath, 200, 300)
     : null;
 
   // User avatar URL (proxied for Jellyfin/Emby)

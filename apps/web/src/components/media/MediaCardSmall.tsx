@@ -1,6 +1,6 @@
 import { Film, Tv, Music, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BASE_URL } from '@/lib/api';
+import { imageProxyUrl } from '@/lib/api';
 
 interface MediaCardSmallProps {
   title: string;
@@ -41,7 +41,7 @@ function getImageUrl(
   height = 225
 ) {
   if (!serverId || !thumbPath) return null;
-  return `${BASE_URL}/api/v1/images/proxy?server=${encodeURIComponent(serverId)}&url=${encodeURIComponent(thumbPath)}&width=${width}&height=${height}&fallback=poster`;
+  return imageProxyUrl(serverId, thumbPath, width, height, 'poster');
 }
 
 export function MediaCardSmall({
