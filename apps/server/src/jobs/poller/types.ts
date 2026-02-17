@@ -49,6 +49,17 @@ export interface ServerWithToken {
   updatedAt: Date;
 }
 
+/**
+ * Composite session identity for safer lookups.
+ * Uses sessionKey as primary key, with optional ratingKey validation.
+ */
+export interface SessionIdentity {
+  serverId: string;
+  sessionKey: string;
+  /** When provided, validates the session has this ratingKey */
+  ratingKey?: string | null;
+}
+
 // ============================================================================
 // Session Types
 // ============================================================================
@@ -97,6 +108,8 @@ export interface ProcessedSession extends StreamDetailFields {
   channelIdentifier: string | null;
   /** Channel logo/thumbnail path */
   channelThumb: string | null;
+  /** Live TV session UUID (stable across channel changes, extracted from SSE key) */
+  liveUuid: string | null;
 
   // Music track metadata
   /** Artist name */
@@ -376,6 +389,10 @@ export interface SessionStopResult {
   shortSession: boolean;
   /** Whether the update was applied (false if session was already stopped) */
   wasUpdated: boolean;
+  /** If true, caller should queue for retry */
+  needsRetry?: boolean;
+  /** Stop data needed for retry */
+  retryData?: { stoppedAt: number; forceStopped: boolean };
 }
 
 /**
