@@ -26,6 +26,7 @@ import {
   Info,
   CheckCircle2,
   Pencil,
+  Download,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -281,13 +282,56 @@ export function MobileSettings() {
   const deviceCount = config?.sessions?.length ?? 0;
   const maxDevices = config?.maxDevices ?? 5;
 
+  const GOOGLE_PLAY_URL = 'https://play.google.com/store/apps/details?id=com.tracearr.mobile';
+  // const APP_STORE_URL = 'https://apps.apple.com/app/tracearr/id...'; // Coming soon
+
   return (
     <div className="space-y-6">
+      {/* App Download Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="h-5 w-5" />
+            Get the App
+          </CardTitle>
+          <CardDescription>Download the Tracearr mobile app for iOS or Android</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap items-center gap-4">
+            <a
+              href={GOOGLE_PLAY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-opacity hover:opacity-80"
+            >
+              <img
+                src="/images/store-badges/google-play.svg"
+                alt="Get it on Google Play"
+                height={40}
+                className="h-[40px] w-auto"
+              />
+            </a>
+            <div className="relative">
+              <img
+                src="/images/store-badges/app-store.svg"
+                alt="Download on the App Store"
+                height={40}
+                className="h-[40px] w-auto opacity-40 grayscale"
+              />
+              <span className="bg-muted text-muted-foreground absolute -top-2 -right-2 rounded px-1.5 py-0.5 text-[10px] font-medium">
+                Soon
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Device Pairing Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Smartphone className="h-5 w-5" />
-            Mobile App Access
+            Pair Your Device
           </CardTitle>
           <CardDescription>
             Connect the Tracearr mobile app to monitor your servers on the go
