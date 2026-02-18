@@ -39,106 +39,106 @@
       },
       "sessionsRevoked": {
         "title": "Sesje unieważnione",
-        "message": "All mobile sessions have been revoked"
+        "message": "Wszystkie sesje mobilne zostały anulowane"
       },
       "loggedIn": {
-        "title": "Success",
-        "message": "Logged in successfully"
+        "title": "Powodzenie",
+        "message": "Zalogowano pomyślnie"
       },
       "webhookTest": {
-        "title": "Test Successful",
-        "message": "Webhook is working correctly"
+        "title": "Test zakończony powodzeniem",
+        "message": "Webhook działa prawidłowo"
       },
       "copiedToClipboard": {
-        "title": "Copied to clipboard"
+        "title": "Skopiowane do schowka"
       },
       "plexAccountLinked": {
-        "title": "Plex Account Linked",
-        "message": "You can now add servers from your Plex account"
+        "title": "Konto Plex powiązane",
+        "message": "Teraz możesz dodać serwery z konta Plex"
       },
       "plexAccountUnlinked": {
-        "title": "Plex Account Unlinked",
-        "message": "Your Plex account has been disconnected"
+        "title": "Konto Plex niepowiązane",
+        "message": "Twoje konto Plex zostało odłączone"
       },
       "agentAdded": {
-        "title": "Agent Added",
-        "message": "The notification agent has been added"
+        "title": "Dodano agenta",
+        "message": "Agent powiadomień został dodany"
       },
       "agentUpdated": {
-        "title": "Agent Updated",
-        "message": "The notification agent has been updated"
+        "title": "Agent zaktualizowany",
+        "message": "Agent powiadomień został zaktualizowany"
       },
       "agentRemoved": {
-        "title": "Agent Removed",
-        "message": "The notification agent has been removed"
+        "title": "Agent został usunięty",
+        "message": "Agent powiadomień został usunięty"
       },
       "jobCompleted": {
-        "title": "Job Completed",
-        "message": "{{name}} finished successfully"
+        "title": "Zadanie zakończone",
+        "message": "{{name}} zakończono pomyślnie"
       },
       "ruleCreated": {
-        "title": "Rule Created",
-        "message": "The rule has been created successfully"
+        "title": "Reguła utworzona",
+        "message": "Użytkownik został pomyślnie utworzony"
       },
       "ruleUpdated": {
-        "title": "Rule Updated",
-        "message": "The rule has been updated successfully"
+        "title": "Reguła zaktualizowana",
+        "message": "Reguła została pomyślnie zaktualizowana"
       },
       "ruleDeleted": {
-        "title": "Rule Deleted",
-        "message": "The rule has been deleted successfully"
+        "title": "Reguła usunięta",
+        "message": "Reguła została pomyślnie usunięta."
       },
       "streamTerminated": {
-        "title": "Stream Terminated",
-        "message": "The playback session has been stopped"
+        "title": "Transmisja zakończona",
+        "message": "Sesja odtwarzania została wstrzymana"
       },
       "serverUrlUpdated": {
-        "title": "Server URL Updated",
-        "message": "The server URL has been updated successfully"
+        "title": "Adres URL serwera zaktualizowany",
+        "message": "Adres URL serwera został pomyślnie zaktualizowany"
       },
       "serverUpdated": {
-        "title": "Server Updated",
-        "message": "The server has been updated successfully"
+        "title": "Zaktualizowano Serwer",
+        "message": "Serwer został pomyślnie zaktualizowany"
       },
       "syncCompletedWithErrors": {
-        "title": "Sync Completed with Errors"
+        "title": "Synchronizacja zakończona z błędami"
       },
       "sessionsDeleted": {
-        "title": "Sessions Deleted",
-        "message_one": "{{count}} session deleted",
-        "message_other": "{{count}} sessions deleted"
+        "title": "Sesje usunięte",
+        "message_one": "{{count}} sesja usunięta",
+        "message_other": "{{count}} sesje usunięta"
       },
       "violationsAcknowledged": {
-        "title": "Violations Acknowledged",
-        "message_one": "{{count}} violation acknowledged",
-        "message_other": "{{count}} violations acknowledged"
+        "title": "Naruszenia potwierdzone",
+        "message_one": "{{count}} naruszenie potwierdzone",
+        "message_other": "{{count}} naruszenia potwierdzon"
       },
       "violationsDismissed": {
-        "title": "Violations Dismissed",
-        "message_one": "{{count}} violation dismissed",
-        "message_other": "{{count}} violations dismissed"
+        "title": "Naruszenia odrzucono",
+        "message_one": "{{count}} naruszenie odrzucono",
+        "message_other": "{{count}} naruszenia odrzucono"
       },
       "apiKeyGenerated": {
-        "title": "API Key Generated",
-        "message": "Your new API key is ready to use"
+        "title": "Wygenerowany klucz API",
+        "message": "Twój nowy klucz API jest gotowy do użycia"
       },
       "mobileAccessEnabled": {
-        "title": "Mobile Access Enabled",
-        "message": "Scan the QR code with the Tracearr mobile app to connect"
+        "title": "Dostęp mobilny włączony",
+        "message": "Zeskanuj kod QR za pomocą aplikacji mobilnej Tracearr aby się połączyć"
       },
       "mobileAccessDisabled": {
-        "title": "Mobile Access Disabled",
-        "message": "All mobile sessions have been revoked"
+        "title": "Dostęp mobilny wyłączony",
+        "message": "Wszystkie sesje mobilne zostały anulowane"
       },
       "pairTokenGenerated": {
-        "title": "Pair Token Generated",
-        "message": "Scan the QR code with your mobile device to pair"
+        "title": "Wygenerowano token parowania",
+        "message": "Zeskanuj kod QR za pomocą urządzenia mobilnego, aby sparować"
       },
       "displayNameUpdated": {
-        "title": "Display Name Updated"
+        "title": "Nazwa wyświetlana została zaktualizowana"
       },
       "trustScoresReset": {
-        "title": "Trust Scores Reset",
+        "title": "Zresetuj wyniki zaufania",
         "message_one": "{{count}} user reset to 100",
         "message_other": "{{count}} users reset to 100"
       },
