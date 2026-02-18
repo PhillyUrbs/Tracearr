@@ -50,8 +50,10 @@ export function useLocationStats(filters?: LocationStatsFilters) {
 }
 
 export function usePlaysByDayOfWeek(timeRange?: StatsTimeRange, serverId?: string | null) {
+  // Include timezone in cache key since day-of-week varies by timezone
+  const timezone = getBrowserTimezone();
   return useQuery({
-    queryKey: ['stats', 'plays-by-dayofweek', timeRange, serverId],
+    queryKey: ['stats', 'plays-by-dayofweek', timeRange, serverId, timezone],
     queryFn: () =>
       api.stats.playsByDayOfWeek(timeRange ?? { period: 'month' }, serverId ?? undefined),
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -59,8 +61,10 @@ export function usePlaysByDayOfWeek(timeRange?: StatsTimeRange, serverId?: strin
 }
 
 export function usePlaysByHourOfDay(timeRange?: StatsTimeRange, serverId?: string | null) {
+  // Include timezone in cache key since hour-of-day varies by timezone
+  const timezone = getBrowserTimezone();
   return useQuery({
-    queryKey: ['stats', 'plays-by-hourofday', timeRange, serverId],
+    queryKey: ['stats', 'plays-by-hourofday', timeRange, serverId, timezone],
     queryFn: () =>
       api.stats.playsByHourOfDay(timeRange ?? { period: 'month' }, serverId ?? undefined),
     staleTime: 1000 * 60 * 5, // 5 minutes

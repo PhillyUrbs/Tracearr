@@ -965,6 +965,8 @@ export const libraryPatternsQuerySchema = z.object({
   bingeThreshold: z.coerce.number().int().min(2).max(10).default(3),
   // Limit for top binge shows
   limit: z.coerce.number().int().positive().max(50).default(10),
+  // Timezone for hour/day extraction (defaults to UTC on backend)
+  timezone: timezoneSchema,
 });
 
 // Library completion rate analysis query schema

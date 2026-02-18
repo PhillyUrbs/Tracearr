@@ -139,7 +139,10 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
         includeSeasonalTrends,
         bingeThreshold,
         limit,
+        timezone,
       } = query.data;
+      // Default to UTC for backwards compatibility
+      const tz = timezone ?? 'UTC';
       const authUser = request.user;
 
       // Validate server access if specific server requested
@@ -262,7 +265,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
             const hourlyResult = await db.execute(sql`
               WITH hourly AS (
                 SELECT
-                  EXTRACT(HOUR FROM sess.started_at AT TIME ZONE 'UTC')::int AS hour,
+                  EXTRACT(HOUR FROM sess.started_at AT TIME ZONE ${tz})::int AS hour,
                   COUNT(*) AS watch_count,
                   SUM(sess.duration_ms) AS total_watch_ms
                 FROM sessions sess
@@ -272,7 +275,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                   AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                   ${serverFilter}
                   ${libraryFilter}
-                GROUP BY EXTRACT(HOUR FROM sess.started_at AT TIME ZONE 'UTC')
+                GROUP BY EXTRACT(HOUR FROM sess.started_at AT TIME ZONE ${tz})
               ),
               total AS (
                 SELECT SUM(watch_count) AS total FROM hourly
@@ -304,7 +307,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
             // Peak day of week
             const peakResult = await db.execute(sql`
               SELECT
-                (SELECT EXTRACT(DOW FROM sess.started_at)::int AS day_of_week
+                (SELECT EXTRACT(DOW FROM sess.started_at AT TIME ZONE ${tz})::int AS day_of_week
                  FROM sessions sess
                  JOIN library_items li ON sess.rating_key = li.rating_key
                    AND sess.server_id = li.server_id
@@ -312,7 +315,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                    AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                    ${serverFilter}
                    ${libraryFilter}
-                 GROUP BY EXTRACT(DOW FROM sess.started_at)
+                 GROUP BY EXTRACT(DOW FROM sess.started_at AT TIME ZONE ${tz})
                  ORDER BY COUNT(*) DESC
                  LIMIT 1
                 )::text AS peak_day_of_week
@@ -331,12 +334,12 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
             const monthlyResult = await db.execute(sql`
               WITH monthly AS (
                 SELECT
-                  TO_CHAR(sess.started_at, 'YYYY-MM') AS month,
+                  TO_CHAR(sess.started_at AT TIME ZONE ${tz}, 'YYYY-MM') AS month,
                   COUNT(*) AS watch_count,
                   SUM(sess.duration_ms) AS total_watch_ms,
                   COUNT(DISTINCT li.id) AS unique_items,
                   COUNT(*)::float / EXTRACT(DAY FROM
-                    (DATE_TRUNC('month', sess.started_at) + INTERVAL '1 month' - INTERVAL '1 day')
+                    (DATE_TRUNC('month', sess.started_at AT TIME ZONE ${tz}) + INTERVAL '1 month' - INTERVAL '1 day')
                   ) AS avg_watches_per_day
                 FROM sessions sess
                 JOIN library_items li ON sess.rating_key = li.rating_key
@@ -345,7 +348,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                   AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                   ${serverFilter}
                   ${libraryFilter}
-                GROUP BY TO_CHAR(sess.started_at, 'YYYY-MM'), DATE_TRUNC('month', sess.started_at)
+                GROUP BY TO_CHAR(sess.started_at AT TIME ZONE ${tz}, 'YYYY-MM'), DATE_TRUNC('month', sess.started_at AT TIME ZONE ${tz})
               )
               SELECT
                 month,
