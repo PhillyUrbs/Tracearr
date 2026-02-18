@@ -46,7 +46,8 @@ test.describe('Settings', () => {
 
   test('can navigate to mobile settings', async ({ page }) => {
     await page.getByRole('link', { name: 'Mobile' }).click();
-    await expect(page.getByRole('heading', { name: 'Mobile App Access' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Get the App' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pair Your Device' })).toBeVisible();
   });
 
   test('can navigate to import settings', async ({ page }) => {
