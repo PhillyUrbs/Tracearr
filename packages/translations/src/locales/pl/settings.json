@@ -83,7 +83,7 @@
     "signInWithPlex": "Zaloguj się poprzez Plex",
     "signUpWithPlex": "Zarejestruj się przez Plex",
     "selectServer": "Wybierz serwer",
-    "chooseServer": "Wybierz, który Plex Media Server będzie monitorowany"
+    "chooseServer": "Wybierz, który Plex Media Serwer będzie monitorowany"
   },
   "jellyfin": {
     "signInWithJellyfin": "Zaloguj się przy użyciu Jellyfin",
