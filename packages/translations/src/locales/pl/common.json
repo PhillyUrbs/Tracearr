@@ -55,7 +55,7 @@
     "later": "Później"
   },
   "states": {
-    "loading": "Wczytywanie…",
+    "loading": "Wczytywanie...",
     "error": "Błąd",
     "success": "Powodzenie",
     "failed": "Niepowodzenie",
@@ -106,7 +106,7 @@
   "units": {
     "km": "kilometr",
     "mi": "mila",
-    "kmh": "km/godz.",
+    "kmh": "km/godz",
     "mph": "mi/h"
   },
   "labels": {
@@ -204,8 +204,8 @@
     "user_other": "{{count}} Użytkowników",
     "session_one": "{{count}} sesja",
     "session_other": "{{count}} sesji",
-    "stream_one": "{{count}}  transmisja",
-    "stream_other": "{{count}}  transmisje",
+    "stream_one": "{{count}} transmisja",
+    "stream_other": "{{count}} transmisje",
     "server_one": "{{count}} serwer",
     "server_other": "{{count}} serwery",
     "rule_one": "{{count}} reguła",
