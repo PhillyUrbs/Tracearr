@@ -38,7 +38,7 @@
     "account": "Konto",
     "disconnectServer": "Rozłącz serwer",
     "disconnectConfirm": "Czy na pewno chcesz odłączyć się od \"{{serverName}}\"? Będziesz musiał sparować ponownie, aby użyć aplikacji.",
-    "disconnectConfirmGeneric": "Czy jesteś pewien, że chcesz się rozłączyć? Będziesz musiał sparować ponownie aby używać aplikacji.",
+    "disconnectConfirmGeneric": "Czy jesteś pewien, że chcesz się rozłączyć? Będziesz musiał sparować ponownie, aby używać aplikacji.",
     "currentlyConnected": "Obecnie połączono z {{serverName}}"
   },
   "navigation": {
