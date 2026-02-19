@@ -104,77 +104,77 @@
         "title": "Sincronización Completada con errores"
       },
       "sessionsDeleted": {
-        "title": "Sessions Deleted",
-        "message_one": "{{count}} session deleted",
-        "message_other": "{{count}} sessions deleted"
+        "title": "Sesiones eliminadas",
+        "message_one": "Sesión de {{count}} eliminada",
+        "message_other": "Sesión de {{count}} eliminada"
       },
       "violationsAcknowledged": {
-        "title": "Violations Acknowledged",
-        "message_one": "{{count}} violation acknowledged",
-        "message_other": "{{count}} violations acknowledged"
+        "title": "Violaciones reconocidas",
+        "message_one": "{{count}} violación reconocida",
+        "message_other": "{{count}} violaciones reconocidas"
       },
       "violationsDismissed": {
-        "title": "Violations Dismissed",
-        "message_one": "{{count}} violation dismissed",
-        "message_other": "{{count}} violations dismissed"
+        "title": "Violaciones rechazadas",
+        "message_one": "{{count}} violación descartada",
+        "message_other": "{{count}} violaciones descartadas"
       },
       "apiKeyGenerated": {
-        "title": "API Key Generated",
-        "message": "Your new API key is ready to use"
+        "title": "Clave API generada",
+        "message": "Tu nueva clave API está lista para usar"
       },
       "mobileAccessEnabled": {
-        "title": "Mobile Access Enabled",
-        "message": "Scan the QR code with the Tracearr mobile app to connect"
+        "title": "Acceso móvil habilitado",
+        "message": "Escanea el código QR con la aplicación móvil Tracearr para conectar"
       },
       "mobileAccessDisabled": {
-        "title": "Mobile Access Disabled",
-        "message": "All mobile sessions have been revoked"
+        "title": "Acceso móvil deshabilitado",
+        "message": "Todas las sesiones móviles han sido revocadas"
       },
       "pairTokenGenerated": {
-        "title": "Pair Token Generated",
-        "message": "Scan the QR code with your mobile device to pair"
+        "title": "Token de emparejamiento generado",
+        "message": "Escanea el código QR con tu dispositivo móvil para emparejar"
       },
       "displayNameUpdated": {
-        "title": "Display Name Updated"
+        "title": "Nombre a mostrar actualizado"
       },
       "trustScoresReset": {
-        "title": "Trust Scores Reset",
-        "message_one": "{{count}} user reset to 100",
-        "message_other": "{{count}} users reset to 100"
+        "title": "Restablecer puntuaciones de confianza",
+        "message_one": "Usuario {{count}} restablecido a 100",
+        "message_other": "Usuario {{count}} restablecido a 100"
       },
       "claimCodeValidated": {
-        "title": "Claim code validated",
-        "message": "You can now proceed with setup"
+        "title": "Código CLAIM validado",
+        "message": "Ahora puede continuar con la configuración"
       }
     },
     "error": {
-      "serverAddFailed": "Failed to add server",
-      "serverRemoveFailed": "Failed to remove server",
-      "serverSyncFailed": "Failed to sync server",
-      "settingsUpdateFailed": "Failed to update settings",
-      "copyFailed": "Could not copy to clipboard",
-      "acknowledgeFailed": "Failed to acknowledge violation",
-      "dismissFailed": "Failed to dismiss violation",
-      "authFailed": "Authentication failed",
-      "webhookTestFailed": "Webhook test failed",
-      "ruleCreateFailed": "Failed to create rule",
-      "ruleUpdateFailed": "Failed to update rule",
-      "ruleDeleteFailed": "Failed to delete rule",
-      "streamTerminateFailed": "Failed to terminate stream",
-      "serverUrlUpdateFailed": "Failed to update server URL",
-      "serverUpdateFailed": "Failed to update server",
-      "serverReorderFailed": "Failed to reorder servers",
-      "sessionsDeleteFailed": "Failed to delete sessions",
-      "apiKeyGenerateFailed": "Failed to generate API key",
-      "mobileAccessEnableFailed": "Failed to enable mobile access",
-      "mobileAccessDisableFailed": "Failed to disable mobile access",
-      "pairTokenGenerateFailed": "Failed to generate pair token",
-      "deviceRemoveFailed": "Failed to remove device",
-      "deviceRenameFailed": "Failed to rename device",
-      "sessionsRevokeFailed": "Failed to revoke sessions",
-      "displayNameUpdateFailed": "Failed to update display name",
-      "trustScoresResetFailed": "Failed to reset trust scores",
-      "routingUpdateFailed": "Failed to update routing",
+      "serverAddFailed": "Error al añadir el servidor",
+      "serverRemoveFailed": "Error al eliminar el servidor",
+      "serverSyncFailed": "Error al sincronizar el servidor",
+      "settingsUpdateFailed": "Error al actualizar ajustes",
+      "copyFailed": "No se ha podido copiar en el portapapeles",
+      "acknowledgeFailed": "Fallo al reconocer violación",
+      "dismissFailed": "Error al descartar la violación",
+      "authFailed": "Autenticación fallida",
+      "webhookTestFailed": "Prueba de Webhook fallida",
+      "ruleCreateFailed": "Error al crear la regla",
+      "ruleUpdateFailed": "Error al actualizar la regla",
+      "ruleDeleteFailed": "Error al eliminar regla",
+      "streamTerminateFailed": "Error al terminar la reproducción",
+      "serverUrlUpdateFailed": "Error al actualizar la URL del servidor",
+      "serverUpdateFailed": "Error al actualizar el servidor",
+      "serverReorderFailed": "Error al reordenar servidores",
+      "sessionsDeleteFailed": "Error al eliminar las sesiones",
+      "apiKeyGenerateFailed": "No se pudo generar la clave API",
+      "mobileAccessEnableFailed": "No se pudo habilitar el acceso móvil",
+      "mobileAccessDisableFailed": "Error al deshabilitar el acceso móvil",
+      "pairTokenGenerateFailed": "Error al generar el token de emparejado",
+      "deviceRemoveFailed": "Error al eliminar el dispositivo",
+      "deviceRenameFailed": "Error al renombrar el dispositivo",
+      "sessionsRevokeFailed": "Error al revocar las sesiones",
+      "displayNameUpdateFailed": "Error al actualizar el nombre mostrado",
+      "trustScoresResetFailed": "Error al restablecer las puntuaciones de confianza",
+      "routingUpdateFailed": "Error al actualizar la regla",
       "clipboardFailed": "Error al copiar al portapapeles",
       "plexUnlinkFailed": "Error al desvincular la cuenta de Plex",
       "agentAddFailed": "Error al añadir el agente",
@@ -208,55 +208,55 @@
       },
       "updateAvailable": {
         "title": "Actualización disponible",
-        "message": "Tracearr {{version}} is available"
+        "message": "La {{version}} de Tracearr está disponible."
       },
       "serverOffline": {
-        "title": "Server Offline",
-        "message": "{{name}} is unreachable"
+        "title": "Servidor fuera de linea",
+        "message": "{{name}} no está disponible"
       },
       "serverOnline": {
-        "title": "Server Online",
-        "message": "{{name}} is back online"
+        "title": "Servidor en línea",
+        "message": "{{name}} está de nuevo en línea"
       },
       "violationDetected": {
-        "title": "New Violation: {{ruleName}}",
-        "message": "{{user}} triggered {{ruleType}}"
+        "title": "Nueva violación: {{ruleName}}",
+        "message": "{{user}} activó {{ruleType}}"
       }
     }
   },
   "push": {
-    "violationDetected": "Sharing Violation Detected",
-    "streamStarted": "Stream Started",
-    "streamEnded": "Stream Ended",
-    "serverDown": "Server Connection Lost",
-    "serverUp": "Server Back Online",
-    "newDevice": "New Device",
-    "trustScoreChanged": "Trust Score Changed"
+    "violationDetected": "Violación de compartir detectada",
+    "streamStarted": "Reproducción iniciada",
+    "streamEnded": "Reproducción finalizada",
+    "serverDown": "Conexión con el servidor perdida",
+    "serverUp": "Regreso del servidor en línea",
+    "newDevice": "Nuevo dispositivo",
+    "trustScoreChanged": "Puntuación de confianza cambiada"
   },
   "settings": {
-    "title": "Notification Settings",
-    "allSeverity": "All (Low, Warning, High)",
-    "warningAndHigh": "Warning & High only",
-    "highOnly": "High severity only",
-    "allTypes": "All Types",
-    "rateLimit": "Current Rate Limit Status",
-    "perMinute": "Per Minute",
-    "perHour": "Per Hour",
-    "enablePushNotifications": "Enable Push Notifications",
-    "notificationEvents": "Notification Events",
-    "violationDetected": "Violation Detected",
-    "streamStarted": "Stream Started",
-    "streamStopped": "Stream Stopped",
-    "concurrentStreams": "Concurrent Streams",
-    "newDevice": "New Device",
-    "trustScoreChanged": "Trust Score Changed",
-    "serverDown": "Server Down",
-    "serverUp": "Server Up",
-    "violationFilters": "Violation Filters",
-    "minimumSeverity": "Minimum Severity",
-    "quietHours": "Quiet Hours",
-    "enableQuietHours": "Enable Quiet Hours",
-    "overrideForCritical": "Override for Critical",
-    "rateLimiting": "Rate Limiting"
+    "title": "Ajustes de notificaciones",
+    "allSeverity": "Todo (Arriba, Advertencia, Alta)",
+    "warningAndHigh": "Advertencia y solo alta",
+    "highOnly": "Sólo alta gravedad",
+    "allTypes": "Todos los tipos",
+    "rateLimit": "Estado actual del límite de tasa",
+    "perMinute": "Por minuto",
+    "perHour": "Por hora",
+    "enablePushNotifications": "Activar Notificaciones Push",
+    "notificationEvents": "Eventos de notificaciones",
+    "violationDetected": "Violación detectada",
+    "streamStarted": "Reproducción iniciada",
+    "streamStopped": "Reproducción detenida",
+    "concurrentStreams": "Reproducciones simultaneas",
+    "newDevice": "Nuevo dispositivo",
+    "trustScoreChanged": "Puntuación de confianza modificada",
+    "serverDown": "Servidor fuera de línea",
+    "serverUp": "Servidor en línea",
+    "violationFilters": "Filtros de violación",
+    "minimumSeverity": "Gravedad mínima",
+    "quietHours": "Horario de silencio",
+    "enableQuietHours": "Activar horas de silencio",
+    "overrideForCritical": "Sobrescribir por Crítico",
+    "rateLimiting": "Limite de tasa"
   }
 }
