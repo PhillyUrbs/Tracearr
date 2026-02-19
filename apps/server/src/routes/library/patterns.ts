@@ -275,7 +275,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                   AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                   ${serverFilter}
                   ${libraryFilter}
-                GROUP BY EXTRACT(HOUR FROM sess.started_at AT TIME ZONE ${tz})
+                GROUP BY 1
               ),
               total AS (
                 SELECT SUM(watch_count) AS total FROM hourly
@@ -315,7 +315,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                    AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                    ${serverFilter}
                    ${libraryFilter}
-                 GROUP BY EXTRACT(DOW FROM sess.started_at AT TIME ZONE ${tz})
+                 GROUP BY 1
                  ORDER BY COUNT(*) DESC
                  LIMIT 1
                 )::text AS peak_day_of_week
@@ -339,7 +339,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                   SUM(sess.duration_ms) AS total_watch_ms,
                   COUNT(DISTINCT li.id) AS unique_items,
                   COUNT(*)::float / EXTRACT(DAY FROM
-                    (DATE_TRUNC('month', sess.started_at AT TIME ZONE ${tz}) + INTERVAL '1 month' - INTERVAL '1 day')
+                    (DATE_TRUNC('month', MIN(sess.started_at AT TIME ZONE ${tz})) + INTERVAL '1 month' - INTERVAL '1 day')
                   ) AS avg_watches_per_day
                 FROM sessions sess
                 JOIN library_items li ON sess.rating_key = li.rating_key
@@ -348,7 +348,7 @@ export const libraryPatternsRoute: FastifyPluginAsync = async (app) => {
                   AND sess.started_at >= NOW() - INTERVAL '1 week' * ${periodWeeks}
                   ${serverFilter}
                   ${libraryFilter}
-                GROUP BY TO_CHAR(sess.started_at AT TIME ZONE ${tz}, 'YYYY-MM'), DATE_TRUNC('month', sess.started_at AT TIME ZONE ${tz})
+                GROUP BY 1
               )
               SELECT
                 month,
