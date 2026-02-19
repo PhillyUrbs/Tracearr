@@ -176,7 +176,7 @@
     "required": "Dit veld is vereist",
     "invalidEmail": "Voer een geldig e-mailadres in",
     "invalidUrl": "Voer een geldige URL in",
-    "minLength": "Moet ten minste {{min}} tekens bevatten",
+    "minLength": "Moet minstens {{min}} tekens bevatten",
     "maxLength": "Mag maximaal {{max}} tekens bevatten"
   },
   "errors": {
