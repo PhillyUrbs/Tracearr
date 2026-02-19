@@ -33,7 +33,7 @@
     "serverName": "Servernaam",
     "serverUrl": "Server-URL",
     "apiKey": "API-sleutel",
-    "syncInterval": "Synchronisatieinterval",
+    "syncInterval": "Synchronisatie-interval",
     "testConnection": "Verbinding testen",
     "connectionSuccess": "Succesvol verbonden",
     "connectionFailed": "Verbinding mislukt"
