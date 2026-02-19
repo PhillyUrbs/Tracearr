@@ -58,7 +58,7 @@
       },
       "plexAccountUnlinked": {
         "title": "Plex-account ontkoppeld",
-        "message": "Je Plex-account is losgekoppeld"
+        "message": "Je Plex-account is ontkoppeld"
       },
       "agentAdded": {
         "title": "Agent toegevoegd",
@@ -143,7 +143,7 @@
         "message_other": "{{count}} gebruikers hersteld naar 100"
       },
       "claimCodeValidated": {
-        "title": "Claimcode gevalideerd",
+        "title": "Claimcode geverifiëerd",
         "message": "Je kunt nu doorgaan met instellen"
       }
     },
