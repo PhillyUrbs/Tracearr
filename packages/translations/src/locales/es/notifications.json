@@ -2,106 +2,106 @@
   "toast": {
     "success": {
       "serverAdded": {
-        "title": "Server Added",
-        "message": "{{name}} has been connected successfully"
+        "title": "Servidor añadido",
+        "message": "{{name}} se ha conectado con éxito"
       },
       "serverRemoved": {
-        "title": "Server Removed",
-        "message": "The server has been removed successfully"
+        "title": "Servidor eliminado",
+        "message": "El servidor se ha eliminado correctamente"
       },
       "serverSynced": {
-        "title": "Server Synced",
-        "message": "Server data has been synchronized"
+        "title": "Servidor sincronizado",
+        "message": "Los datos del servidor han sido sincronizados"
       },
       "settingsUpdated": {
-        "title": "Settings Updated",
-        "message": "Your settings have been saved"
+        "title": "Ajustes Actualizados.",
+        "message": "Su configuración ha sido guardada."
       },
       "tokenCopied": {
-        "title": "Token Copied",
-        "message": "Pair token copied to clipboard"
+        "title": "Token copiado",
+        "message": "Token de emparejamiento copiado al portapapeles"
       },
       "violationAcknowledged": {
-        "title": "Violation Acknowledged",
-        "message": "The violation has been marked as acknowledged"
+        "title": "Violación de política reconocida",
+        "message": "La violación ha sido marcada como reconocida"
       },
       "violationDismissed": {
-        "title": "Violation Dismissed",
-        "message": "The violation has been dismissed"
+        "title": "Violación rechazada",
+        "message": "La violación ha sido rechazada"
       },
       "deviceRemoved": {
-        "title": "Device Removed",
-        "message": "The device has been disconnected"
+        "title": "Dispositivo eliminado",
+        "message": "El dispositivo ha sido desconectado"
       },
       "deviceRenamed": {
-        "title": "Device Renamed",
-        "message": "The device name has been updated"
+        "title": "Dispositivo renombrado",
+        "message": "El nombre del dispositivo ha sido actualizado"
       },
       "sessionsRevoked": {
-        "title": "Sessions Revoked",
-        "message": "All mobile sessions have been revoked"
+        "title": "Sesiones revocadas",
+        "message": "Todas las sesiones móviles han sido revocadas"
       },
       "loggedIn": {
-        "title": "Success",
-        "message": "Logged in successfully"
+        "title": "Correcto",
+        "message": "Sesión iniciada correctamente"
       },
       "webhookTest": {
-        "title": "Test Successful",
-        "message": "Webhook is working correctly"
+        "title": "Test satisfactorio",
+        "message": "Webhook está funcionando correctamente"
       },
       "copiedToClipboard": {
-        "title": "Copied to clipboard"
+        "title": "Copiado al portapapeles"
       },
       "plexAccountLinked": {
-        "title": "Plex Account Linked",
-        "message": "You can now add servers from your Plex account"
+        "title": "Cuenta Plex vinculada",
+        "message": "Ahora puedes añadir servidores desde tu cuenta de Plex"
       },
       "plexAccountUnlinked": {
-        "title": "Plex Account Unlinked",
-        "message": "Your Plex account has been disconnected"
+        "title": "Cuenta Plex desvinculada",
+        "message": "Tu cuenta de Plex ha sido desconectada"
       },
       "agentAdded": {
-        "title": "Agent Added",
-        "message": "The notification agent has been added"
+        "title": "Agente añadido",
+        "message": "El agente de notificaciones ha sido añadido"
       },
       "agentUpdated": {
-        "title": "Agent Updated",
-        "message": "The notification agent has been updated"
+        "title": "Agente actualizado",
+        "message": "El agente de notificaciones ha sido actualizado"
       },
       "agentRemoved": {
-        "title": "Agent Removed",
-        "message": "The notification agent has been removed"
+        "title": "Agente eliminado",
+        "message": "El agente de notificación ha sido eliminado"
       },
       "jobCompleted": {
-        "title": "Job Completed",
-        "message": "{{name}} finished successfully"
+        "title": "Trabajo completado",
+        "message": "{{name}} finalizado correctamente"
       },
       "ruleCreated": {
-        "title": "Rule Created",
-        "message": "The rule has been created successfully"
+        "title": "Regla creada",
+        "message": "La regla ha sido creada con éxito"
       },
       "ruleUpdated": {
-        "title": "Rule Updated",
-        "message": "The rule has been updated successfully"
+        "title": "Regla Actualizada",
+        "message": "La regla ha sido actualizada correctamente"
       },
       "ruleDeleted": {
-        "title": "Rule Deleted",
-        "message": "The rule has been deleted successfully"
+        "title": "Regla eliminada",
+        "message": "La regla ha sido eliminada correctamente"
       },
       "streamTerminated": {
-        "title": "Stream Terminated",
-        "message": "The playback session has been stopped"
+        "title": "Reproducción finalizada",
+        "message": "Se detuvo la sesión de reproducción"
       },
       "serverUrlUpdated": {
-        "title": "Server URL Updated",
-        "message": "The server URL has been updated successfully"
+        "title": "URL del servidor actualizada",
+        "message": "La URL del servidor se ha actualizado correctamente"
       },
       "serverUpdated": {
-        "title": "Server Updated",
-        "message": "The server has been updated successfully"
+        "title": "Servidor Actualizado",
+        "message": "El servidor ha sido actualizado correctamente"
       },
       "syncCompletedWithErrors": {
-        "title": "Sync Completed with Errors"
+        "title": "Sincronización Completada con errores"
       },
       "sessionsDeleted": {
         "title": "Sessions Deleted",
@@ -175,39 +175,39 @@
       "displayNameUpdateFailed": "Failed to update display name",
       "trustScoresResetFailed": "Failed to reset trust scores",
       "routingUpdateFailed": "Failed to update routing",
-      "clipboardFailed": "Failed to copy to clipboard",
-      "plexUnlinkFailed": "Failed to unlink Plex account",
-      "agentAddFailed": "Failed to add agent",
-      "agentUpdateFailed": "Failed to update agent",
-      "agentRemoveFailed": "Failed to remove agent",
-      "agentTestFailed": "Test failed",
-      "jobAlreadyRunning": "Job already running",
-      "jobStartFailed": "Failed to start job",
-      "jobLoadFailed": "Failed to load maintenance jobs",
-      "invalidUrl": "Invalid URL",
-      "plexDirectUrl": "plex.direct URLs are relay addresses that cannot be used here. Please use a direct IP address or hostname instead.",
+      "clipboardFailed": "Error al copiar al portapapeles",
+      "plexUnlinkFailed": "Error al desvincular la cuenta de Plex",
+      "agentAddFailed": "Error al añadir el agente",
+      "agentUpdateFailed": "Error al actualizar el agente",
+      "agentRemoveFailed": "Error al eliminar el agente",
+      "agentTestFailed": "Test fallido",
+      "jobAlreadyRunning": "Trabajo ya en ejecución",
+      "jobStartFailed": "Error al iniciar el trabajo",
+      "jobLoadFailed": "Error al cargar los trabajos de mantenimiento",
+      "invalidUrl": "URL invalida",
+      "plexDirectUrl": "Las URLs plex.direct son direcciones repetidas que no se pueden utilizar aquí. Por favor, utilice una dirección IP directa o nombre de host en su lugar.",
       "invalidClaimCode": {
-        "title": "Invalid claim code",
-        "message": "Please check the server logs"
+        "title": "Código CLAIM no válido",
+        "message": "Por favor, compruebe los registros del servidor"
       }
     },
     "warning": {
       "jobFailed": {
-        "title": "Job Failed",
-        "message": "{{name}} encountered an error"
+        "title": "Tarea fallida",
+        "message": "{{name}} encontró un error"
       }
     },
     "info": {
       "streamStarted": {
-        "title": "New Stream Started",
-        "message": "{{user}} started watching {{media}}"
+        "title": "Nueva reproducción iniciada",
+        "message": "{{user}} comenzó a ver {{media}}"
       },
       "streamStopped": {
-        "title": "Stream Stopped",
-        "message": "{{user}} stopped watching"
+        "title": "Reproducción detenida",
+        "message": "{{user}} ha dejado de reproducir"
       },
       "updateAvailable": {
-        "title": "Update Available",
+        "title": "Actualización disponible",
         "message": "Tracearr {{version}} is available"
       },
       "serverOffline": {
