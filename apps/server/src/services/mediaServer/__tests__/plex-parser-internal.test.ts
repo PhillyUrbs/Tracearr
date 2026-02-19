@@ -6,7 +6,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { findStreamByType, deriveDynamicRange, STREAM_TYPE } from '../plex/parser.js';
+import {
+  findStreamByType,
+  deriveDynamicRange,
+  parseMediaMetadataResponse,
+  STREAM_TYPE,
+} from '../plex/parser.js';
 import { extractLiveUuid } from '../plex/plexUtils.js';
 
 // ============================================================================
@@ -262,6 +267,233 @@ describe('deriveDynamicRange', () => {
       };
       expect(deriveDynamicRange(stream)).toBe('HDR10');
     });
+
+    it('should prioritize extendedDisplayTitle DV keywords over color attributes', () => {
+      // DV P7 with HDR10 base layer color attributes but DV keyword in title
+      const stream = {
+        colorSpace: 'bt2020nc',
+        colorTrc: 'smpte2084',
+        bitDepth: 10,
+        extendedDisplayTitle: '4K (HEVC Main 10 Dolby Vision Profile 7)',
+      };
+      expect(deriveDynamicRange(stream)).toBe('Dolby Vision');
+    });
+  });
+
+  describe('Dolby Vision detection via DOVI fields', () => {
+    it('should detect DV P7 via extendedDisplayTitle when DOVIPresent not set', () => {
+      // DV Profile 7 with HDR10 base layer but DOVIPresent missing
+      const stream = {
+        colorSpace: 'bt2020nc',
+        colorTrc: 'smpte2084',
+        bitDepth: 10,
+        extendedDisplayTitle: '4K DoVi/HDR10 (HEVC Main 10)',
+      };
+      expect(deriveDynamicRange(stream)).toBe('Dolby Vision');
+    });
+
+    it('should detect DV via DOVIBLPresent when DOVIPresent not set', () => {
+      const stream = {
+        DOVIBLPresent: '1',
+        DOVIRPUPresent: '1',
+        DOVILevel: '6',
+        colorSpace: 'bt2020nc',
+        colorTrc: 'smpte2084',
+      };
+      expect(deriveDynamicRange(stream)).toBe('Dolby Vision');
+    });
+  });
+
+  describe('bt2020nc color space detection', () => {
+    it('should detect HDR10 via bt2020nc + smpte2084', () => {
+      const stream = { colorSpace: 'bt2020nc', colorTrc: 'smpte2084' };
+      expect(deriveDynamicRange(stream)).toBe('HDR10');
+    });
+
+    it('should detect HLG via bt2020nc + arib-std-b67', () => {
+      const stream = { colorSpace: 'bt2020nc', colorTrc: 'arib-std-b67' };
+      expect(deriveDynamicRange(stream)).toBe('HLG');
+    });
+
+    it('should detect HDR via bt2020nc without specific TRC', () => {
+      const stream = { colorSpace: 'bt2020nc' };
+      expect(deriveDynamicRange(stream)).toBe('HDR');
+    });
+  });
+});
+
+// ============================================================================
+// parseMediaMetadataResponse Tests
+// ============================================================================
+
+describe('parseMediaMetadataResponse', () => {
+  it('should return null for empty or invalid input', () => {
+    expect(parseMediaMetadataResponse(null)).toBeNull();
+    expect(parseMediaMetadataResponse({})).toBeNull();
+    expect(parseMediaMetadataResponse({ MediaContainer: {} })).toBeNull();
+    expect(parseMediaMetadataResponse({ MediaContainer: { Metadata: [] } })).toBeNull();
+  });
+
+  it('should pick the selected audio track over the first audio track', () => {
+    // Mirrors the live API evidence: TrueHD is default (index=1), AC3 5.1 is selected (index=2)
+    const data = {
+      MediaContainer: {
+        Metadata: [
+          {
+            Media: [
+              {
+                bitrate: 40000,
+                container: 'mkv',
+                Part: [
+                  {
+                    Stream: [
+                      {
+                        streamType: '1',
+                        codec: 'hevc',
+                        width: 3840,
+                        height: 2160,
+                        default: '1',
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'truehd',
+                        channels: 8,
+                        audioChannelLayout: '7.1',
+                        default: '1',
+                        index: 1,
+                        // NOT selected
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'ac3',
+                        channels: 6,
+                        audioChannelLayout: '5.1',
+                        selected: '1',
+                        index: 2,
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'ac3',
+                        channels: 2,
+                        audioChannelLayout: '2.0',
+                        index: 3,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = parseMediaMetadataResponse(data);
+
+    expect(result).not.toBeNull();
+    // Should use the selected AC3 5.1 track, NOT the first TrueHD track
+    expect(result!.audioCodec).toBe('AC3');
+    expect(result!.audioChannels).toBe(6);
+    expect(result!.sourceAudioDetails?.channelLayout).toBe('5.1');
+  });
+
+  it('should pick the selected video stream over the first video stream', () => {
+    const data = {
+      MediaContainer: {
+        Metadata: [
+          {
+            Media: [
+              {
+                bitrate: 20000,
+                container: 'mkv',
+                Part: [
+                  {
+                    Stream: [
+                      {
+                        streamType: '1',
+                        codec: 'vc1',
+                        width: 1920,
+                        height: 1080,
+                        index: 0,
+                        // NOT selected
+                      },
+                      {
+                        streamType: '1',
+                        codec: 'hevc',
+                        width: 3840,
+                        height: 2160,
+                        selected: '1',
+                        index: 1,
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'aac',
+                        channels: 2,
+                        selected: '1',
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = parseMediaMetadataResponse(data);
+
+    expect(result).not.toBeNull();
+    // Should use the selected HEVC stream, NOT the first VC1 stream
+    expect(result!.videoCodec).toBe('HEVC');
+    expect(result!.videoWidth).toBe(3840);
+    expect(result!.videoHeight).toBe(2160);
+  });
+
+  it('should fall back to first stream when no stream is selected', () => {
+    const data = {
+      MediaContainer: {
+        Metadata: [
+          {
+            Media: [
+              {
+                bitrate: 10000,
+                container: 'mkv',
+                Part: [
+                  {
+                    Stream: [
+                      {
+                        streamType: '1',
+                        codec: 'h264',
+                        width: 1920,
+                        height: 1080,
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'aac',
+                        channels: 2,
+                      },
+                      {
+                        streamType: '2',
+                        codec: 'ac3',
+                        channels: 6,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = parseMediaMetadataResponse(data);
+
+    expect(result).not.toBeNull();
+    // No selected stream - should return first audio (aac)
+    expect(result!.audioCodec).toBe('AAC');
+    expect(result!.audioChannels).toBe(2);
   });
 });
 

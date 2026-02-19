@@ -144,7 +144,6 @@ export function findStreamByType(
  * @internal Exported for unit testing
  */
 export function deriveDynamicRange(stream: Record<string, unknown>): string {
-  // Check for Dolby Vision via DOVI fields
   if (parseString(stream.DOVIPresent) === '1') {
     const profile = parseOptionalString(stream.DOVIProfile);
     if (profile) {
@@ -153,22 +152,27 @@ export function deriveDynamicRange(stream: Record<string, unknown>): string {
     return 'Dolby Vision';
   }
 
-  const colorSpace = parseOptionalString(stream.colorSpace);
-  const bitDepth = parseOptionalNumber(stream.bitDepth);
-  const colorTrc = parseOptionalString(stream.colorTrc);
-
-  // Check for HDR10/HDR10+/HLG via color attributes
-  if (colorSpace === 'bt2020' || (bitDepth && bitDepth >= 10)) {
-    if (colorTrc === 'smpte2084') return 'HDR10';
-    if (colorTrc === 'arib-std-b67') return 'HLG';
-    if (colorSpace === 'bt2020') return 'HDR';
+  if (parseString(stream.DOVIBLPresent) === '1' || parseString(stream.DOVIRPUPresent) === '1') {
+    return 'Dolby Vision';
   }
 
-  // Fallback: check extendedDisplayTitle for HDR keywords (Tautulli approach)
+  // Check extendedDisplayTitle for DV before color attributes — DV P7 has HDR10 base layer
+  // attributes (bt2020nc + smpte2084) that would otherwise match HDR10.
   const extendedDisplayTitle = parseOptionalString(stream.extendedDisplayTitle) ?? '';
   if (extendedDisplayTitle.includes('Dolby Vision') || extendedDisplayTitle.includes('DoVi')) {
     return 'Dolby Vision';
   }
+
+  const colorSpace = parseOptionalString(stream.colorSpace);
+  const bitDepth = parseOptionalNumber(stream.bitDepth);
+  const colorTrc = parseOptionalString(stream.colorTrc);
+
+  if (colorSpace === 'bt2020' || colorSpace === 'bt2020nc' || (bitDepth && bitDepth >= 10)) {
+    if (colorTrc === 'smpte2084') return 'HDR10';
+    if (colorTrc === 'arib-std-b67') return 'HLG';
+    if (colorSpace === 'bt2020' || colorSpace === 'bt2020nc') return 'HDR';
+  }
+
   if (extendedDisplayTitle.includes('HLG')) {
     return 'HLG';
   }
@@ -529,10 +533,8 @@ export function parseMediaMetadataResponse(data: unknown): PlexOriginalMedia | n
   const parts = selectedMedia?.Part as Array<Record<string, unknown>> | undefined;
   const part = parts?.[0];
 
-  // Find video and audio streams
-  const streams = part?.Stream as Array<Record<string, unknown>> | undefined;
-  const videoStream = streams?.find((s) => parseNumber(s.streamType) === STREAM_TYPE.VIDEO);
-  const audioStream = streams?.find((s) => parseNumber(s.streamType) === STREAM_TYPE.AUDIO);
+  const videoStream = findStreamByType(part, STREAM_TYPE.VIDEO);
+  const audioStream = findStreamByType(part, STREAM_TYPE.AUDIO);
 
   // Extract source video details
   const sourceVideoDetails: SourceVideoDetails = {};
