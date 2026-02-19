@@ -22,12 +22,12 @@
         "message": "Token de emparejamiento copiado al portapapeles"
       },
       "violationAcknowledged": {
-        "title": "Violación de política reconocida",
-        "message": "La violación ha sido marcada como reconocida"
+        "title": "Infracción de política reconocida",
+        "message": "La infracción ha sido marcada como reconocida"
       },
       "violationDismissed": {
-        "title": "Violación rechazada",
-        "message": "La violación ha sido rechazada"
+        "title": "Infracción rechazada",
+        "message": "La infracción ha sido rechazada"
       },
       "deviceRemoved": {
         "title": "Dispositivo eliminado",
@@ -109,14 +109,14 @@
         "message_other": "Sesión de {{count}} eliminada"
       },
       "violationsAcknowledged": {
-        "title": "Violaciones reconocidas",
-        "message_one": "{{count}} violación reconocida",
-        "message_other": "{{count}} violaciones reconocidas"
+        "title": "Infracción reconocidas",
+        "message_one": "{{count}} infracción reconocida",
+        "message_other": "{{count}} infracciones reconocidas"
       },
       "violationsDismissed": {
-        "title": "Violaciones rechazadas",
-        "message_one": "{{count}} violación descartada",
-        "message_other": "{{count}} violaciones descartadas"
+        "title": "Infracciones rechazadas",
+        "message_one": "{{count}} infracción descartada",
+        "message_other": "{{count}} infracciones descartadas"
       },
       "apiKeyGenerated": {
         "title": "Clave API generada",
@@ -153,8 +153,8 @@
       "serverSyncFailed": "Error al sincronizar el servidor",
       "settingsUpdateFailed": "Error al actualizar ajustes",
       "copyFailed": "No se ha podido copiar en el portapapeles",
-      "acknowledgeFailed": "Fallo al reconocer violación",
-      "dismissFailed": "Error al descartar la violación",
+      "acknowledgeFailed": "Fallo al reconocer infracción",
+      "dismissFailed": "Error al descartar la infracción",
       "authFailed": "Autenticación fallida",
       "webhookTestFailed": "Prueba de Webhook fallida",
       "ruleCreateFailed": "Error al crear la regla",
@@ -219,13 +219,13 @@
         "message": "{{name}} está de nuevo en línea"
       },
       "violationDetected": {
-        "title": "Nueva violación: {{ruleName}}",
+        "title": "Nueva infracción: {{ruleName}}",
         "message": "{{user}} activó {{ruleType}}"
       }
     }
   },
   "push": {
-    "violationDetected": "Violación de compartir detectada",
+    "violationDetected": "Infracción de compartir detectada",
     "streamStarted": "Reproducción iniciada",
     "streamEnded": "Reproducción finalizada",
     "serverDown": "Conexión con el servidor perdida",
@@ -244,7 +244,7 @@
     "perHour": "Por hora",
     "enablePushNotifications": "Activar Notificaciones Push",
     "notificationEvents": "Eventos de notificaciones",
-    "violationDetected": "Violación detectada",
+    "violationDetected": "Infracción detectada",
     "streamStarted": "Reproducción iniciada",
     "streamStopped": "Reproducción detenida",
     "concurrentStreams": "Reproducciones simultaneas",
@@ -252,7 +252,7 @@
     "trustScoreChanged": "Puntuación de confianza modificada",
     "serverDown": "Servidor fuera de línea",
     "serverUp": "Servidor en línea",
-    "violationFilters": "Filtros de violación",
+    "violationFilters": "Filtros de infracción",
     "minimumSeverity": "Gravedad mínima",
     "quietHours": "Horario de silencio",
     "enableQuietHours": "Activar horas de silencio",
