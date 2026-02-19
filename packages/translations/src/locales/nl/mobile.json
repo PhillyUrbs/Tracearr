@@ -20,7 +20,7 @@
     "pairingFailed": "Koppelen mislukt",
     "invalidQrCode": "Ongeldige QR-code",
     "invalidQrCodeMissingData": "Ongeldige QR-code: koppelingsgegevens ontbreken",
-    "invalidQrCodeFormat": "Ongeldig QR-codeformaat. Genereer een nieuwe code.",
+    "invalidQrCodeFormat": "Ongeldig indeling QR-code. Genereer een nieuwe code.",
     "invalidQrCodeMissingUrl": "Ongeldige QR-code: server-URL ontbreekt",
     "invalidQrCodeMissingToken": "Ongeldige QR-code: koppeltoken ontbreekt",
     "invalidServerUrlInQr": "Ongeldige server-URL in QR-code",
